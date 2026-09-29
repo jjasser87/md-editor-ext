@@ -7,7 +7,9 @@
     "build": "vite build",
     "dev": "vite build --watch",
     "zip": "node scripts/zip.mjs",
-    "release": "npm run build && npm run zip"
+    "release": "npm run build && npm run zip",
+    "set-client-id": "node scripts/set-client-id.mjs",
+    "test:drive": "node tests/drive/api.test.mjs"
   },
   "devDependencies": {
     "jsdom": "^26.1.0",

@@ -24,7 +24,7 @@ Exit code is non-zero if any test fails. **Some tests are intentionally "bug pro
 ## How the extension is loaded
 `lib/fixture.mjs` → `chromium.launchPersistentContext(tmpdir, { channel: 'chromium', headless: true, args: ['--disable-extensions-except=…', '--load-extension=…'] })`
 (new headless, no xvfb needed). Extension id is taken from the service-worker URL. Each test gets a fresh profile.
-Helpers: `openEditor(ext, {query, init, arg, after})` (collects console errors/dialogs, `addInitScript`), `fsaStub()` (in-memory File System Access `showOpenFilePicker`/`showSaveFilePicker` with `window.__fsa` recording writes), `md()/setMd()/storageGet()`.
+Helpers: `openDriveEditor(ext,{drive,identity,mock,...})` (lib/drive.mjs), `openEditor(ext, {query, init, arg, after})` (collects console errors/dialogs, `addInitScript`), `fsaStub()` (in-memory File System Access `showOpenFilePicker`/`showSaveFilePicker` with `window.__fsa` recording writes), `md()/setMd()/storageGet()`.
 
 ## Files
 | file | covers |
@@ -38,6 +38,7 @@ Helpers: `openEditor(ext, {query, init, arg, after})` (collects console errors/d
 | tests/07-content-script.spec.mjs | `file:///tmp/test.md` content-script button |
 | tests/08-screenshots.spec.mjs | light/dark/source screenshots |
 | tests/09-probes.spec.mjs | XSS/untrusted markdown, remote image, task-list layout, source sync, large doc, unicode, misc |
+| tests/10-drive.spec.mjs | Google Drive: mock api + real createDriveApi() against an in-process Drive emulator (lib/drive.mjs: FakeDrive, chrome.identity stub, installMock) |
 
 ## Manual checks that cannot be automated here
 See REPORT.md "Manual".

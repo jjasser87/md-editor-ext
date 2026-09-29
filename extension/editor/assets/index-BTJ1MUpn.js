@@ -1168,7 +1168,7 @@ class NodeRange {
   }
 }
 const emptyAttrs = /* @__PURE__ */ Object.create(null);
-let Node$1 = class Node {
+let Node$2 = class Node2 {
   /**
   @internal
   */
@@ -1299,14 +1299,14 @@ let Node$1 = class Node {
   copy(content = null) {
     if (content == this.content)
       return this;
-    return new Node(this.type, this.attrs, content, this.marks);
+    return new Node2(this.type, this.attrs, content, this.marks);
   }
   /**
   Create a copy of this node, with the given set of marks instead
   of the node's own marks.
   */
   mark(marks) {
-    return marks == this.marks ? this : new Node(this.type, this.attrs, this.content, marks);
+    return marks == this.marks ? this : new Node2(this.type, this.attrs, this.content, marks);
   }
   /**
   Create a copy of this node with only the content between the
@@ -1569,8 +1569,8 @@ let Node$1 = class Node {
     return node;
   }
 };
-Node$1.prototype.text = void 0;
-class TextNode extends Node$1 {
+Node$2.prototype.text = void 0;
+class TextNode extends Node$2 {
   /**
   @internal
   */
@@ -2158,7 +2158,7 @@ let NodeType$1 = class NodeType {
   create(attrs = null, content, marks) {
     if (this.isText)
       throw new Error("NodeType.create can't construct text nodes");
-    return new Node$1(this, this.computeAttrs(attrs), Fragment.from(content), Mark$1.setFrom(marks));
+    return new Node$2(this, this.computeAttrs(attrs), Fragment.from(content), Mark$1.setFrom(marks));
   }
   /**
   Like [`create`](https://prosemirror.net/docs/ref/#model.NodeType.create), but check the given content
@@ -2168,7 +2168,7 @@ let NodeType$1 = class NodeType {
   createChecked(attrs = null, content, marks) {
     content = Fragment.from(content);
     this.checkContent(content);
-    return new Node$1(this, this.computeAttrs(attrs), content, Mark$1.setFrom(marks));
+    return new Node$2(this, this.computeAttrs(attrs), content, Mark$1.setFrom(marks));
   }
   /**
   Like [`create`](https://prosemirror.net/docs/ref/#model.NodeType.create), but see if it is
@@ -2191,7 +2191,7 @@ let NodeType$1 = class NodeType {
     let after = matched && matched.fillBefore(Fragment.empty, true);
     if (!after)
       return null;
-    return new Node$1(this, attrs, content.append(after), Mark$1.setFrom(marks));
+    return new Node$2(this, attrs, content.append(after), Mark$1.setFrom(marks));
   }
   /**
   Returns true if the given fragment is valid content for this node
@@ -2380,7 +2380,7 @@ class Schema {
       let type = this.marks[prop], excl = type.spec.excludes;
       type.excluded = excl == null ? [type] : excl == "" ? [] : gatherMarks(this, excl.split(" "));
     }
-    this.nodeFromJSON = (json2) => Node$1.fromJSON(this, json2);
+    this.nodeFromJSON = (json2) => Node$2.fromJSON(this, json2);
     this.markFromJSON = (json2) => Mark$1.fromJSON(this, json2);
     this.topNodeType = this.nodes[this.spec.topNode || "doc"];
     this.cached.wrappings = /* @__PURE__ */ Object.create(null);
@@ -6039,7 +6039,7 @@ class EditorState {
     let instance = new EditorState($config);
     $config.fields.forEach((field) => {
       if (field.name == "doc") {
-        instance.doc = Node$1.fromJSON(config.schema, json2.doc);
+        instance.doc = Node$2.fromJSON(config.schema, json2.doc);
       } else if (field.name == "selection") {
         instance.selection = Selection.fromJSON(instance.doc, json2.selection);
       } else if (field.name == "storedMarks") {
@@ -6997,21 +6997,21 @@ function storeScrollPos(view) {
   return { refDOM, refTop, stack: scrollStack(view.dom) };
 }
 function scrollStack(dom) {
-  let stack = [], doc2 = dom.ownerDocument;
+  let stack2 = [], doc2 = dom.ownerDocument;
   for (let cur = dom; cur; cur = parentNode(cur)) {
-    stack.push({ dom: cur, top: cur.scrollTop, left: cur.scrollLeft });
+    stack2.push({ dom: cur, top: cur.scrollTop, left: cur.scrollLeft });
     if (dom == doc2)
       break;
   }
-  return stack;
+  return stack2;
 }
-function resetScrollPos({ refDOM, refTop, stack }) {
+function resetScrollPos({ refDOM, refTop, stack: stack2 }) {
   let newRefTop = refDOM ? refDOM.getBoundingClientRect().top : 0;
-  restoreScrollStack(stack, newRefTop == 0 ? 0 : newRefTop - refTop);
+  restoreScrollStack(stack2, newRefTop == 0 ? 0 : newRefTop - refTop);
 }
-function restoreScrollStack(stack, dTop) {
-  for (let i = 0; i < stack.length; i++) {
-    let { dom, top, left } = stack[i];
+function restoreScrollStack(stack2, dTop) {
+  for (let i = 0; i < stack2.length; i++) {
+    let { dom, top, left } = stack2[i];
     if (dom.scrollTop != top + dTop)
       dom.scrollTop = top + dTop;
     if (dom.scrollLeft != left)
@@ -17373,7 +17373,7 @@ var ResizableNodeView = class {
     };
   }
 };
-var Node2 = class Node22 extends Extendable {
+var Node$1 = class Node22 extends Extendable {
   constructor(..._args) {
     super(..._args);
     this.type = "node";
@@ -17468,7 +17468,7 @@ function render(tag, attributes) {
   ]);
   return createJSXElement([tag, rest]);
 }
-const h = (tag, attributes) => render(tag, attributes);
+const h$1 = (tag, attributes) => render(tag, attributes);
 const handleBackspace$1 = (editor2, type) => {
   var _previous$lastChild;
   const { state: state2 } = editor2;
@@ -17497,7 +17497,7 @@ const handleBackspace$1 = (editor2, type) => {
   });
 };
 const inputRegex$3 = /^\s*>\s$/;
-const Blockquote = Node2.create({
+const Blockquote = Node$1.create({
   name: "blockquote",
   addOptions() {
     return { HTMLAttributes: {} };
@@ -17509,9 +17509,9 @@ const Blockquote = Node2.create({
     return [{ tag: "blockquote" }];
   },
   renderHTML({ HTMLAttributes }) {
-    return /* @__PURE__ */ h("blockquote", {
+    return /* @__PURE__ */ h$1("blockquote", {
       ...mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
-      children: /* @__PURE__ */ h("slot", {})
+      children: /* @__PURE__ */ h$1("slot", {})
     });
   },
   parseMarkdown: (token, helpers) => {
@@ -17588,9 +17588,9 @@ const Bold = Mark2.create({
     ];
   },
   renderHTML({ HTMLAttributes }) {
-    return /* @__PURE__ */ h("strong", {
+    return /* @__PURE__ */ h$1("strong", {
       ...mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
-      children: /* @__PURE__ */ h("slot", {})
+      children: /* @__PURE__ */ h$1("slot", {})
     });
   },
   markdownTokenName: "strong",
@@ -17727,7 +17727,7 @@ const Code = Mark2.create({
 const DEFAULT_TAB_SIZE = 4;
 const backtickInputRegex = /^```([a-z]+)?[\s\n]$/;
 const tildeInputRegex = /^~~~([a-z]+)?[\s\n]$/;
-const CodeBlock = Node2.create({
+const CodeBlock = Node$1.create({
   name: "codeBlock",
   addOptions() {
     return {
@@ -17954,7 +17954,7 @@ const CodeBlock = Node2.create({
     })];
   }
 });
-const Document = Node2.create({
+const Document = Node$1.create({
   name: "doc",
   topNode: true,
   content: "block+",
@@ -17963,7 +17963,7 @@ const Document = Node2.create({
     return h2.renderChildren(node.content, "\n\n");
   }
 });
-const HardBreak = Node2.create({
+const HardBreak = Node$1.create({
   name: "hardBreak",
   markdownTokenName: "br",
   addOptions() {
@@ -18015,7 +18015,7 @@ const HardBreak = Node2.create({
     };
   }
 });
-const Heading = Node2.create({
+const Heading = Node$1.create({
   name: "heading",
   addOptions() {
     return {
@@ -18090,7 +18090,7 @@ const Heading = Node2.create({
     });
   }
 });
-const HorizontalRule = Node2.create({
+const HorizontalRule = Node$1.create({
   name: "horizontalRule",
   addOptions() {
     return {
@@ -18810,7 +18810,7 @@ function fastts(state2, input, t, defaultt, jr) {
 }
 function decodeTlds(encoded) {
   const words = [];
-  const stack = [];
+  const stack2 = [];
   let i = 0;
   let digits = "0123456789";
   while (i < encoded.length) {
@@ -18819,13 +18819,13 @@ function decodeTlds(encoded) {
       popDigitCount++;
     }
     if (popDigitCount > 0) {
-      words.push(stack.join(""));
+      words.push(stack2.join(""));
       for (let popCount = parseInt(encoded.substring(i, i + popDigitCount), 10); popCount > 0; popCount--) {
-        stack.pop();
+        stack2.pop();
       }
       i += popDigitCount;
     } else {
-      stack.push(encoded[i]);
+      stack2.push(encoded[i]);
       i++;
     }
   }
@@ -19819,7 +19819,7 @@ const Link = Mark2.create({
 const ListItemName$1 = "listItem";
 const TextStyleName$1 = "textStyle";
 const bulletListInputRegex = /^\s*([-+*])\s$/;
-const BulletList = Node2.create({
+const BulletList = Node$1.create({
   name: "bulletList",
   addOptions() {
     return {
@@ -20104,7 +20104,7 @@ function parseSameLineOrderedListText(text, helpers) {
     text
   }]);
 }
-const ListItem = Node2.create({
+const ListItem = Node$1.create({
   name: "listItem",
   addOptions() {
     return {
@@ -20567,7 +20567,7 @@ function cssListStyleTypeToHtmlType(style2) {
       return null;
   }
 }
-const OrderedList = Node2.create({
+const OrderedList = Node$1.create({
   name: "orderedList",
   addOptions() {
     return {
@@ -20730,7 +20730,7 @@ const getCheckboxLabel = (node, checked, a11y) => {
   var _a11y$checkboxLabel;
   return (a11y === null || a11y === void 0 || (_a11y$checkboxLabel = a11y.checkboxLabel) === null || _a11y$checkboxLabel === void 0 ? void 0 : _a11y$checkboxLabel.call(a11y, node, checked)) || `Task item checkbox for ${node.textContent || "empty task item"}`;
 };
-const TaskItem = Node2.create({
+const TaskItem = Node$1.create({
   name: "taskItem",
   addOptions() {
     return {
@@ -20897,7 +20897,7 @@ const TaskItem = Node2.create({
     })];
   }
 });
-const TaskList = Node2.create({
+const TaskList = Node$1.create({
   name: "taskList",
   addOptions() {
     return {
@@ -21022,7 +21022,7 @@ Extension.create({
 });
 const EMPTY_PARAGRAPH_MARKDOWN = "&nbsp;";
 const NBSP_CHAR = " ";
-const Paragraph = Node2.create({
+const Paragraph = Node$1.create({
   name: "paragraph",
   priority: 1e3,
   addOptions() {
@@ -21128,7 +21128,7 @@ const Strike = Mark2.create({
     })];
   }
 });
-const Text = Node2.create({
+const Text = Node$1.create({
   name: "text",
   group: "inline",
   parseMarkdown: (token) => {
@@ -22674,7 +22674,7 @@ var be = (() => {
     return false;
   }
 })(), m = { codeRemoveIndent: /^(?: {1,4}| {0,3}\t)/gm, outputLinkReplace: /\\([\[\]])/g, indentCodeCompensation: /^(\s+)(?:```)/, beginningSpace: /^\s+/, endingHash: /#$/, startingSpaceChar: /^ /, endingSpaceChar: / $/, nonSpaceChar: /[^ ]/, newLineCharGlobal: /\n/g, tabCharGlobal: /\t/g, multipleSpaceGlobal: /\s+/g, blankLine: /^[ \t]*$/, doubleBlankLine: /\n[ \t]*\n[ \t]*$/, blockquoteStart: /^ {0,3}>/, blockquoteSetextReplace: /\n {0,3}((?:=+|-+) *)(?=\n|$)/g, blockquoteSetextReplace2: /^ {0,3}>[ \t]?/gm, listReplaceNesting: /^ {1,4}(?=( {4})*[^ ])/g, listIsTask: /^\[[ xX]\] +\S/, listReplaceTask: /^\[[ xX]\] +/, listTaskCheckbox: /\[[ xX]\]/, anyLine: /\n.*\n/, hrefBrackets: /^<(.*)>$/, tableDelimiter: /[:|]/, tableAlignChars: /^\||\| *$/g, tableRowBlankLine: /\n[ \t]*$/, tableAlignRight: /^ *-+: *$/, tableAlignCenter: /^ *:-+: *$/, tableAlignLeft: /^ *:-+ *$/, startATag: /^<a /i, endATag: /^<\/a>/i, startPreScriptTag: /^<(pre|code|kbd|script)(\s|>)/i, endPreScriptTag: /^<\/(pre|code|kbd|script)(\s|>)/i, startAngleBracket: /^</, endAngleBracket: />$/, pedanticHrefTitle: /^([^'"]*[^\s])\s+(['"])(.*)\2/, unicodeAlphaNumeric: /[\p{L}\p{N}]/u, escapeTest: /[&<>"']/, escapeReplace: /[&<>"']/g, escapeTestNoEncode: /[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/, escapeReplaceNoEncode: /[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/g, caret: /(^|[^\[])\^/g, percentDecode: /%25/g, findPipe: /\|/g, splitPipe: / \|/, slashPipe: /\\\|/g, carriageReturn: /\r\n|\r/g, spaceLine: /^ +$/gm, notSpaceStart: /^\S*/, endingNewline: /\n$/, listItemRegex: (u3) => new RegExp(`^( {0,3}${u3})((?:[	 ][^\\n]*)?(?:\\n|$))`), nextBulletRegex: (u3) => new RegExp(`^ {0,${Math.min(3, u3 - 1)}}(?:[*+-]|\\d{1,9}[.)])((?:[ 	][^\\n]*)?(?:\\n|$))`), hrRegex: (u3) => new RegExp(`^ {0,${Math.min(3, u3 - 1)}}((?:- *){3,}|(?:_ *){3,}|(?:\\* *){3,})(?:\\n+|$)`), fencesBeginRegex: (u3) => new RegExp(`^ {0,${Math.min(3, u3 - 1)}}(?:\`\`\`|~~~)`), headingBeginRegex: (u3) => new RegExp(`^ {0,${Math.min(3, u3 - 1)}}#`), htmlBeginRegex: (u3) => new RegExp(`^ {0,${Math.min(3, u3 - 1)}}<(?:[a-z].*>|!--)`, "i"), blockquoteBeginRegex: (u3) => new RegExp(`^ {0,${Math.min(3, u3 - 1)}}>`) }, Re = /^(?:[ \t]*(?:\n|$))+/, Oe = /^((?: {4}| {0,3}\t)[^\n]+(?:\n(?:[ \t]*(?:\n|$))*)?)+/, Te = /^ {0,3}(`{3,}(?=[^`\n]*(?:\n|$))|~{3,})([^\n]*)(?:\n|$)(?:|([\s\S]*?)(?:\n|$))(?: {0,3}\1[~`]* *(?=\n|$)|$)/, C = /^ {0,3}((?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/, we = /^ {0,3}(#{1,6})(?=\s|$)(.*)(?:\n+|$)/, Q = / {0,3}(?:[*+-]|\d{1,9}[.)])/, se = /^(?!bull |blockCode|fences|blockquote|heading|html|table)((?:.|\n(?!\s*?\n|bull |blockCode|fences|blockquote|heading|html|table))+?)\n {0,3}(=+|-+) *(?:\n+|$)/, ie = k(se).replace(/bull/g, Q).replace(/blockCode/g, /(?: {4}| {0,3}\t)/).replace(/fences/g, / {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g, / {0,3}>/).replace(/heading/g, / {0,3}#{1,6}/).replace(/html/g, / {0,3}<[^\n>]+>\n/).replace(/\|table/g, "").getRegex(), ye = k(se).replace(/bull/g, Q).replace(/blockCode/g, /(?: {4}| {0,3}\t)/).replace(/fences/g, / {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g, / {0,3}>/).replace(/heading/g, / {0,3}#{1,6}/).replace(/html/g, / {0,3}<[^\n>]+>\n/).replace(/table/g, / {0,3}\|?(?:[:\- ]*\|)+[\:\- ]*\n/).getRegex(), j = /^([^\n]+(?:\n(?!hr|heading|lheading|blockquote|fences|list|html|table| +\n)[^\n]+)*)/, Pe = /^[^\n]+/, F = /(?!\s*\])(?:\\[\s\S]|[^\[\]\\])+/, Se = k(/^ {0,3}\[(label)\]: *(?:\n[ \t]*)?([^<\s][^\s]*|<.*?>)(?:(?: +(?:\n[ \t]*)?| *\n[ \t]*)(title))? *(?:\n+|$)/).replace("label", F).replace("title", /(?:"(?:\\"?|[^"\\])*"|'[^'\n]*(?:\n[^'\n]+)*\n?'|\([^()]*\))/).getRegex(), $e = k(/^(bull)([ \t][^\n]+?)?(?:\n|$)/).replace(/bull/g, Q).getRegex(), v = "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul", U = /<!--(?:-?>|[\s\S]*?(?:-->|$))/, _e = k("^ {0,3}(?:<(script|pre|style|textarea)[\\s>][\\s\\S]*?(?:</\\1>[^\\n]*\\n+|$)|comment[^\\n]*(\\n+|$)|<\\?[\\s\\S]*?(?:\\?>\\n*|$)|<![A-Z][\\s\\S]*?(?:>\\n*|$)|<!\\[CDATA\\[[\\s\\S]*?(?:\\]\\]>\\n*|$)|</?(tag)(?: +|\\n|/?>)[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|<(?!script|pre|style|textarea)([a-z][\\w-]*)(?:attribute)*? */?>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|</(?!script|pre|style|textarea)[a-z][\\w-]*\\s*>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$))", "i").replace("comment", U).replace("tag", v).replace("attribute", / +[a-zA-Z:_][\w.:-]*(?: *= *"[^"\n]*"| *= *'[^'\n]*'| *= *[^\s"'=<>`]+)?/).getRegex(), oe = k(j).replace("hr", C).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("|lheading", "").replace("|table", "").replace("blockquote", " {0,3}>").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*\\n)|~{3,})[^\\n]*\\n").replace("list", " {0,3}(?:[*+-]|1[.)])[ \\t]").replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", v).getRegex(), Le = k(/^( {0,3}> ?(paragraph|[^\n]*)(?:\n|$))+/).replace("paragraph", oe).getRegex(), K = { blockquote: Le, code: Oe, def: Se, fences: Te, heading: we, hr: C, html: _e, lheading: ie, list: $e, newline: Re, paragraph: oe, table: _, text: Pe }, ne = k("^ *([^\\n ].*)\\n {0,3}((?:\\| *)?:?-+:? *(?:\\| *:?-+:? *)*(?:\\| *)?)(?:\\n((?:(?! *\\n|hr|heading|blockquote|code|fences|list|html).*(?:\\n|$))*)\\n*|$)").replace("hr", C).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("blockquote", " {0,3}>").replace("code", "(?: {4}| {0,3}	)[^\\n]").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*\\n)|~{3,})[^\\n]*\\n").replace("list", " {0,3}(?:[*+-]|1[.)])[ \\t]").replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", v).getRegex(), Me = { ...K, lheading: ye, table: ne, paragraph: k(j).replace("hr", C).replace("heading", " {0,3}#{1,6}(?:\\s|$)").replace("|lheading", "").replace("table", ne).replace("blockquote", " {0,3}>").replace("fences", " {0,3}(?:`{3,}(?=[^`\\n]*\\n)|~{3,})[^\\n]*\\n").replace("list", " {0,3}(?:[*+-]|1[.)])[ \\t]").replace("html", "</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag", v).getRegex() }, ze = { ...K, html: k(`^ *(?:comment *(?:\\n|\\s*$)|<(tag)[\\s\\S]+?</\\1> *(?:\\n{2,}|\\s*$)|<tag(?:"[^"]*"|'[^']*'|\\s[^'"/>\\s]*)*?/?> *(?:\\n{2,}|\\s*$))`).replace("comment", U).replace(/tag/g, "(?!(?:a|em|strong|small|s|cite|q|dfn|abbr|data|time|code|var|samp|kbd|sub|sup|i|b|u|mark|ruby|rt|rp|bdi|bdo|span|br|wbr|ins|del|img)\\b)\\w+(?!:|[^\\w\\s@]*@)\\b").getRegex(), def: /^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +(["(][^\n]+[")]))? *(?:\n+|$)/, heading: /^(#{1,6})(.*)(?:\n+|$)/, fences: _, lheading: /^(.+?)\n {0,3}(=+|-+) *(?:\n+|$)/, paragraph: k(j).replace("hr", C).replace("heading", ` *#{1,6} *[^
-]`).replace("lheading", ie).replace("|table", "").replace("blockquote", " {0,3}>").replace("|fences", "").replace("|list", "").replace("|html", "").replace("|tag", "").getRegex() }, Ee = /^\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/, Ie = /^(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/, ae = /^( {2,}|\\)\n(?!\s*$)/, Ae = /^(`+|[^`])(?:(?= {2,}\n)|[\s\S]*?(?:(?=[\\<!\[`*_]|\b_|$)|[^ ](?= {2,}\n)))/, z = /[\p{P}\p{S}]/u, H = /[\s\p{P}\p{S}]/u, W = /[^\s\p{P}\p{S}]/u, Ce = k(/^((?![*_])punctSpace)/, "u").replace(/punctSpace/g, H).getRegex(), le = /(?!~)[\p{P}\p{S}]/u, Be = /(?!~)[\s\p{P}\p{S}]/u, De = /(?:[^\s\p{P}\p{S}]|~)/u, qe = k(/link|precode-code|html/, "g").replace("link", /\[(?:[^\[\]`]|(?<a>`+)[^`]+\k<a>(?!`))*?\]\((?:\\[\s\S]|[^\\\(\)]|\((?:\\[\s\S]|[^\\\(\)])*\))*\)/).replace("precode-", be ? "(?<!`)()" : "(^^|[^`])").replace("code", /(?<b>`+)[^`]+\k<b>(?!`)/).replace("html", /<(?! )[^<>]*?>/).getRegex(), ue = /^(?:\*+(?:((?!\*)punct)|([^\s*]))?)|^_+(?:((?!_)punct)|([^\s_]))?/, ve = k(ue, "u").replace(/punct/g, z).getRegex(), He = k(ue, "u").replace(/punct/g, le).getRegex(), pe = "^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)punct(\\*+)(?=[\\s]|$)|notPunctSpace(\\*+)(?!\\*)(?=punctSpace|$)|(?!\\*)punctSpace(\\*+)(?=notPunctSpace)|[\\s](\\*+)(?!\\*)(?=punct)|(?!\\*)punct(\\*+)(?!\\*)(?=punct)|notPunctSpace(\\*+)(?=notPunctSpace)", Ze = k(pe, "gu").replace(/notPunctSpace/g, W).replace(/punctSpace/g, H).replace(/punct/g, z).getRegex(), Ge = k(pe, "gu").replace(/notPunctSpace/g, De).replace(/punctSpace/g, Be).replace(/punct/g, le).getRegex(), Ne = k("^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)punct(_+)(?=[\\s]|$)|notPunctSpace(_+)(?!_)(?=punctSpace|$)|(?!_)punctSpace(_+)(?=notPunctSpace)|[\\s](_+)(?!_)(?=punct)|(?!_)punct(_+)(?!_)(?=punct)", "gu").replace(/notPunctSpace/g, W).replace(/punctSpace/g, H).replace(/punct/g, z).getRegex(), Qe = k(/^~~?(?:((?!~)punct)|[^\s~])/, "u").replace(/punct/g, z).getRegex(), je = "^[^~]+(?=[^~])|(?!~)punct(~~?)(?=[\\s]|$)|notPunctSpace(~~?)(?!~)(?=punctSpace|$)|(?!~)punctSpace(~~?)(?=notPunctSpace)|[\\s](~~?)(?!~)(?=punct)|(?!~)punct(~~?)(?!~)(?=punct)|notPunctSpace(~~?)(?=notPunctSpace)", Fe = k(je, "gu").replace(/notPunctSpace/g, W).replace(/punctSpace/g, H).replace(/punct/g, z).getRegex(), Ue = k(/\\(punct)/, "gu").replace(/punct/g, z).getRegex(), Ke = k(/^<(scheme:[^\s\x00-\x1f<>]*|email)>/).replace("scheme", /[a-zA-Z][a-zA-Z0-9+.-]{1,31}/).replace("email", /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+(@)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+(?![-_])/).getRegex(), We = k(U).replace("(?:-->|$)", "-->").getRegex(), Xe = k("^comment|^</[a-zA-Z][\\w:-]*\\s*>|^<[a-zA-Z][\\w-]*(?:attribute)*?\\s*/?>|^<\\?[\\s\\S]*?\\?>|^<![a-zA-Z]+\\s[\\s\\S]*?>|^<!\\[CDATA\\[[\\s\\S]*?\\]\\]>").replace("comment", We).replace("attribute", /\s+[a-zA-Z:_][\w.:-]*(?:\s*=\s*"[^"]*"|\s*=\s*'[^']*'|\s*=\s*[^\s"'=<>`]+)?/).getRegex(), q = /(?:\[(?:\\[\s\S]|[^\[\]\\])*\]|\\[\s\S]|`+(?!`)[^`]*?`+(?!`)|``+(?=\])|[^\[\]\\`])*?/, Je = k(/^!?\[(label)\]\(\s*(href)(?:(?:[ \t]+(?:\n[ \t]*)?|\n[ \t]*)(title))?\s*\)/).replace("label", q).replace("href", /<(?:\\.|[^\n<>\\])+>|[^ \t\n\x00-\x1f]*/).replace("title", /"(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)/).getRegex(), ce = k(/^!?\[(label)\]\[(ref)\]/).replace("label", q).replace("ref", F).getRegex(), he = k(/^!?\[(ref)\](?:\[\])?/).replace("ref", F).getRegex(), Ve = k("reflink|nolink(?!\\()", "g").replace("reflink", ce).replace("nolink", he).getRegex(), re = /[hH][tT][tT][pP][sS]?|[fF][tT][pP]/, X = { _backpedal: _, anyPunctuation: Ue, autolink: Ke, blockSkip: qe, br: ae, code: Ie, del: _, delLDelim: _, delRDelim: _, emStrongLDelim: ve, emStrongRDelimAst: Ze, emStrongRDelimUnd: Ne, escape: Ee, link: Je, nolink: he, punctuation: Ce, reflink: ce, reflinkSearch: Ve, tag: Xe, text: Ae, url: _ }, Ye = { ...X, link: k(/^!?\[(label)\]\((.*?)\)/).replace("label", q).getRegex(), reflink: k(/^!?\[(label)\]\s*\[([^\]]*)\]/).replace("label", q).getRegex() }, N = { ...X, emStrongRDelimAst: Ge, emStrongLDelim: He, delLDelim: Qe, delRDelim: Fe, url: k(/^((?:protocol):\/\/|www\.)(?:[a-zA-Z0-9\-]+\.?)+[^\s<]*|^email/).replace("protocol", re).replace("email", /[A-Za-z0-9._+-]+(@)[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![-_])/).getRegex(), _backpedal: /(?:[^?!.,:;*_'"~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_'"~)]+(?!$))+/, del: /^(~~?)(?=[^\s~])((?:\\[\s\S]|[^\\])*?(?:\\[\s\S]|[^\s~\\]))\1(?=[^~]|$)/, text: k(/^([`~]+|[^`~])(?:(?= {2,}\n)|(?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)|[\s\S]*?(?:(?=[\\<!\[`*~_]|\b_|protocol:\/\/|www\.|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)))/).replace("protocol", re).getRegex() }, et = { ...N, br: k(ae).replace("{2,}", "*").getRegex(), text: k(N.text).replace("\\b_", "\\b_| {2,}\\n").replace(/\{2,\}/g, "*").getRegex() }, B = { normal: K, gfm: Me, pedantic: ze }, E = { normal: X, gfm: N, breaks: et, pedantic: Ye };
+]`).replace("lheading", ie).replace("|table", "").replace("blockquote", " {0,3}>").replace("|fences", "").replace("|list", "").replace("|html", "").replace("|tag", "").getRegex() }, Ee = /^\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/, Ie = /^(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/, ae = /^( {2,}|\\)\n(?!\s*$)/, Ae = /^(`+|[^`])(?:(?= {2,}\n)|[\s\S]*?(?:(?=[\\<!\[`*_]|\b_|$)|[^ ](?= {2,}\n)))/, z = /[\p{P}\p{S}]/u, H = /[\s\p{P}\p{S}]/u, W = /[^\s\p{P}\p{S}]/u, Ce = k(/^((?![*_])punctSpace)/, "u").replace(/punctSpace/g, H).getRegex(), le = /(?!~)[\p{P}\p{S}]/u, Be = /(?!~)[\s\p{P}\p{S}]/u, De = /(?:[^\s\p{P}\p{S}]|~)/u, qe = k(/link|precode-code|html/, "g").replace("link", /\[(?:[^\[\]`]|(?<a>`+)[^`]+\k<a>(?!`))*?\]\((?:\\[\s\S]|[^\\\(\)]|\((?:\\[\s\S]|[^\\\(\)])*\))*\)/).replace("precode-", be ? "(?<!`)()" : "(^^|[^`])").replace("code", /(?<b>`+)[^`]+\k<b>(?!`)/).replace("html", /<(?! )[^<>]*?>/).getRegex(), ue = /^(?:\*+(?:((?!\*)punct)|([^\s*]))?)|^_+(?:((?!_)punct)|([^\s_]))?/, ve = k(ue, "u").replace(/punct/g, z).getRegex(), He = k(ue, "u").replace(/punct/g, le).getRegex(), pe = "^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)punct(\\*+)(?=[\\s]|$)|notPunctSpace(\\*+)(?!\\*)(?=punctSpace|$)|(?!\\*)punctSpace(\\*+)(?=notPunctSpace)|[\\s](\\*+)(?!\\*)(?=punct)|(?!\\*)punct(\\*+)(?!\\*)(?=punct)|notPunctSpace(\\*+)(?=notPunctSpace)", Ze = k(pe, "gu").replace(/notPunctSpace/g, W).replace(/punctSpace/g, H).replace(/punct/g, z).getRegex(), Ge = k(pe, "gu").replace(/notPunctSpace/g, De).replace(/punctSpace/g, Be).replace(/punct/g, le).getRegex(), Ne = k("^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)punct(_+)(?=[\\s]|$)|notPunctSpace(_+)(?!_)(?=punctSpace|$)|(?!_)punctSpace(_+)(?=notPunctSpace)|[\\s](_+)(?!_)(?=punct)|(?!_)punct(_+)(?!_)(?=punct)", "gu").replace(/notPunctSpace/g, W).replace(/punctSpace/g, H).replace(/punct/g, z).getRegex(), Qe = k(/^~~?(?:((?!~)punct)|[^\s~])/, "u").replace(/punct/g, z).getRegex(), je = "^[^~]+(?=[^~])|(?!~)punct(~~?)(?=[\\s]|$)|notPunctSpace(~~?)(?!~)(?=punctSpace|$)|(?!~)punctSpace(~~?)(?=notPunctSpace)|[\\s](~~?)(?!~)(?=punct)|(?!~)punct(~~?)(?!~)(?=punct)|notPunctSpace(~~?)(?=notPunctSpace)", Fe = k(je, "gu").replace(/notPunctSpace/g, W).replace(/punctSpace/g, H).replace(/punct/g, z).getRegex(), Ue = k(/\\(punct)/, "gu").replace(/punct/g, z).getRegex(), Ke = k(/^<(scheme:[^\s\x00-\x1f<>]*|email)>/).replace("scheme", /[a-zA-Z][a-zA-Z0-9+.-]{1,31}/).replace("email", /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+(@)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+(?![-_])/).getRegex(), We = k(U).replace("(?:-->|$)", "-->").getRegex(), Xe = k("^comment|^</[a-zA-Z][\\w:-]*\\s*>|^<[a-zA-Z][\\w-]*(?:attribute)*?\\s*/?>|^<\\?[\\s\\S]*?\\?>|^<![a-zA-Z]+\\s[\\s\\S]*?>|^<!\\[CDATA\\[[\\s\\S]*?\\]\\]>").replace("comment", We).replace("attribute", /\s+[a-zA-Z:_][\w.:-]*(?:\s*=\s*"[^"]*"|\s*=\s*'[^']*'|\s*=\s*[^\s"'=<>`]+)?/).getRegex(), q$1 = /(?:\[(?:\\[\s\S]|[^\[\]\\])*\]|\\[\s\S]|`+(?!`)[^`]*?`+(?!`)|``+(?=\])|[^\[\]\\`])*?/, Je = k(/^!?\[(label)\]\(\s*(href)(?:(?:[ \t]+(?:\n[ \t]*)?|\n[ \t]*)(title))?\s*\)/).replace("label", q$1).replace("href", /<(?:\\.|[^\n<>\\])+>|[^ \t\n\x00-\x1f]*/).replace("title", /"(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)/).getRegex(), ce = k(/^!?\[(label)\]\[(ref)\]/).replace("label", q$1).replace("ref", F).getRegex(), he = k(/^!?\[(ref)\](?:\[\])?/).replace("ref", F).getRegex(), Ve = k("reflink|nolink(?!\\()", "g").replace("reflink", ce).replace("nolink", he).getRegex(), re = /[hH][tT][tT][pP][sS]?|[fF][tT][pP]/, X = { _backpedal: _, anyPunctuation: Ue, autolink: Ke, blockSkip: qe, br: ae, code: Ie, del: _, delLDelim: _, delRDelim: _, emStrongLDelim: ve, emStrongRDelimAst: Ze, emStrongRDelimUnd: Ne, escape: Ee, link: Je, nolink: he, punctuation: Ce, reflink: ce, reflinkSearch: Ve, tag: Xe, text: Ae, url: _ }, Ye = { ...X, link: k(/^!?\[(label)\]\((.*?)\)/).replace("label", q$1).getRegex(), reflink: k(/^!?\[(label)\]\s*\[([^\]]*)\]/).replace("label", q$1).getRegex() }, N = { ...X, emStrongRDelimAst: Ge, emStrongLDelim: He, delLDelim: Qe, delRDelim: Fe, url: k(/^((?:protocol):\/\/|www\.)(?:[a-zA-Z0-9\-]+\.?)+[^\s<]*|^email/).replace("protocol", re).replace("email", /[A-Za-z0-9._+-]+(@)[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![-_])/).getRegex(), _backpedal: /(?:[^?!.,:;*_'"~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_'"~)]+(?!$))+/, del: /^(~~?)(?=[^\s~])((?:\\[\s\S]|[^\\])*?(?:\\[\s\S]|[^\s~\\]))\1(?=[^~]|$)/, text: k(/^([`~]+|[^`~])(?:(?= {2,}\n)|(?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)|[\s\S]*?(?:(?=[\\<!\[`*~_]|\b_|protocol:\/\/|www\.|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)))/).replace("protocol", re).getRegex() }, et = { ...N, br: k(ae).replace("{2,}", "*").getRegex(), text: k(N.text).replace("\\b_", "\\b_| {2,}\\n").replace(/\{2,\}/g, "*").getRegex() }, B = { normal: K, gfm: Me, pedantic: ze }, E = { normal: X, gfm: N, breaks: et, pedantic: Ye };
 var tt = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }, ke = (u3) => tt[u3];
 function T(u3, e) {
   if (e) {
@@ -25227,7 +25227,7 @@ const WARN_INLINE = new Set([...NATIVE_INLINE].filter((t) => t !== "br"));
 const INLINE_TAG = /^<(\/?)([A-Za-z][A-Za-z0-9-]*)(?:\s+[A-Za-z_:][\w:.-]*(?:\s*=\s*(?:[^\s"'=<>`]+|'[^']*'|"[^"]*"))?)*\s*\/?>/;
 const FN_DEF = /^\[\^[^\]\s]+\]:[^\n]*(?:\n(?:[ \t]{4,}[^\n]*|\[\^[^\]\s]+\]:[^\n]*|[ \t]*(?=\n[ \t]{4,})))*/;
 const FRONT = /^---[ \t]*\n(?=[ \t]*[\w-]+[ \t]*:)(?:[\s\S]*?\n)?(?:---|\.\.\.)[ \t]*(?:\n|$)/;
-const RawBlock = Node2.create({
+const RawBlock = Node$1.create({
   name: "rawBlock",
   group: "block",
   atom: true,
@@ -25267,7 +25267,7 @@ const RawBlock = Node2.create({
   parseMarkdown: (token, h2) => h2.createNode("rawBlock", { raw: token.text ?? "", kind: token.kind || "html" }),
   renderMarkdown: (node) => encodeRaw(node.attrs.raw)
 });
-const RawInline = Node2.create({
+const RawInline = Node$1.create({
   name: "rawInline",
   group: "inline",
   inline: true,
@@ -27137,7 +27137,7 @@ function fillEmptyCellContent(cellType) {
   if (!filled) throw new Error(`[tiptap error]: "${cellType.name}" has no default content to backfill.`);
   return filled.content;
 }
-const TableCell = Node2.create({
+const TableCell = Node$1.create({
   name: "tableCell",
   addOptions() {
     return { HTMLAttributes: {} };
@@ -27171,7 +27171,7 @@ const TableCell = Node2.create({
     ];
   }
 });
-const TableHeader = Node2.create({
+const TableHeader = Node$1.create({
   name: "tableHeader",
   addOptions() {
     return { HTMLAttributes: {} };
@@ -27205,7 +27205,7 @@ const TableHeader = Node2.create({
     ];
   }
 });
-const TableRow = Node2.create({
+const TableRow = Node$1.create({
   name: "tableRow",
   addOptions() {
     return { HTMLAttributes: {} };
@@ -27495,7 +27495,7 @@ function renderTableToMarkdown(node, h2, options = {}) {
   });
   return out;
 }
-const Table = Node2.create({
+const Table = Node$1.create({
   name: "table",
   addOptions() {
     return {
@@ -27731,7 +27731,7 @@ const TableKit = Extension.create({
   }
 });
 const inputRegex = /(?:^|\s)(!\[(.+|:?)]\((\S+)(?:(?:\s+)["'](\S+)["'])?\))$/;
-const Image = Node2.create({
+const Image = Node$1.create({
   name: "image",
   addOptions() {
     return {
@@ -44825,7 +44825,7 @@ function createToolbar(editor2, { onToggleSource, isSourceMode }) {
     }
   };
 }
-const DEBOUNCE_MS = 250;
+const DEBOUNCE_MS$1 = 250;
 function createEditor(containerEl, { markdown: markdown2 = "", onChange: onChange2, onWarnings, theme = "light" } = {}) {
   if (!containerEl) throw new Error("createEditor: container element required");
   const root = document.createElement("div");
@@ -44846,23 +44846,30 @@ function createEditor(containerEl, { markdown: markdown2 = "", onChange: onChang
   let silent = false;
   let timer = null;
   let destroyed = false;
-  const wysMarkdown = () => normalizeMarkdownOutput(editor2.getMarkdown());
+  let baseMd = markdown2 == null ? "" : String(markdown2);
+  let baseDoc = null;
+  let savedMd = baseMd;
+  const serialize = () => normalizeMarkdownOutput(editor2.getMarkdown());
+  const docUnchanged = () => baseDoc !== null && editor2.state.doc.eq(baseDoc);
+  const wysMarkdown = () => docUnchanged() ? baseMd : serialize();
   const getMarkdown = () => sourceMode ? src.value : wysMarkdown();
   function schedule() {
     clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
       if (!destroyed && onChange2) onChange2(getMarkdown());
-    }, DEBOUNCE_MS);
+    }, DEBOUNCE_MS$1);
   }
   let warnings = [];
   function loadIntoEditor(md) {
     silent = true;
     try {
-      editor2.commands.setContent(md || "", { contentType: "markdown", emitUpdate: false });
+      editor2.chain().setMeta("addToHistory", false).setContent(md || "", { contentType: "markdown", emitUpdate: false }).run();
     } finally {
       silent = false;
     }
+    baseMd = md || "";
+    baseDoc = editor2.state.doc;
     try {
       warnings = detectWarnings(editor2.markdown, md || "");
     } catch {
@@ -44908,8 +44915,21 @@ function createEditor(containerEl, { markdown: markdown2 = "", onChange: onChang
     if (sourceMode) src.value = md;
     else loadIntoEditor(md);
     if (sourceMode) loadIntoEditor(md);
+    savedMd = md;
     clearTimeout(timer);
     timer = null;
+  }
+  function isModified() {
+    return getMarkdown() !== savedMd;
+  }
+  function markSaved() {
+    const md = getMarkdown();
+    savedMd = md;
+    if (!sourceMode) {
+      baseMd = md;
+      baseDoc = editor2.state.doc;
+    }
+    return md;
   }
   function setSourceMode(on) {
     on = !!on;
@@ -44935,6 +44955,8 @@ function createEditor(containerEl, { markdown: markdown2 = "", onChange: onChang
   return {
     getMarkdown,
     setMarkdown,
+    isModified,
+    markSaved,
     /** Non-blocking notices about constructs of the last loaded document that are NOT preserved verbatim: [{code, message}]. */
     getWarnings: () => warnings.slice(),
     setTheme(t) {
@@ -45030,14 +45052,1081 @@ function downloadText(name, text) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1e3);
 }
+const API = "https://www.googleapis.com/drive/v3";
+const UPLOAD = "https://www.googleapis.com/upload/drive/v3";
+const FILE_FIELDS = "id,name,mimeType,modifiedTime,size,version,parents,capabilities/canEdit";
+class DriveError extends Error {
+  constructor(code, message, extra = {}) {
+    super(message);
+    this.name = "DriveError";
+    this.code = code;
+    Object.assign(this, extra);
+  }
+}
+const q = (s) => String(s).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+function createDriveApi({ identity = globalThis.chrome && chrome.identity, fetch: f = globalThis.fetch.bind(globalThis) } = {}) {
+  let cachedToken = null;
+  function getTokenRaw(interactive) {
+    return new Promise((resolve, reject) => {
+      if (!identity || !identity.getAuthToken) return reject(new DriveError("not-configured", "chrome.identity is unavailable"));
+      try {
+        const cid = globalThis.chrome && chrome.runtime && chrome.runtime.getManifest && chrome.runtime.getManifest().oauth2 && chrome.runtime.getManifest().oauth2.client_id;
+        if (cid && /^YOUR_CLIENT_ID/.test(cid)) return reject(new DriveError("not-configured", 'Google OAuth client ID is not configured. See README "Google Drive setup".'));
+      } catch {
+      }
+      identity.getAuthToken({ interactive }, (res) => {
+        const err = globalThis.chrome && chrome.runtime && chrome.runtime.lastError;
+        const msg = err && err.message || "";
+        const token2 = typeof res === "string" ? res : res && res.token;
+        if (token2) return resolve(token2);
+        if (/client_id|bad client id|invalid_client|invalid oauth2 (?:client id|scopes?)|OAuth2 request failed.*invalid/i.test(msg)) return reject(new DriveError("not-configured", 'Google OAuth client ID is not configured. See README "Google Drive setup".'));
+        if (/did not approve|user (?:cancel|denied)|closed|canceled|cancelled/i.test(msg)) return reject(new DriveError("auth-cancelled", "Sign-in was cancelled"));
+        reject(new DriveError("auth", msg || "Not signed in to Google"));
+      });
+    });
+  }
+  async function token(interactive = false) {
+    if (!cachedToken) cachedToken = await getTokenRaw(interactive);
+    return cachedToken;
+  }
+  function dropToken(t) {
+    return new Promise((resolve) => {
+      const old = t || cachedToken;
+      cachedToken = null;
+      if (old && identity && identity.removeCachedAuthToken) identity.removeCachedAuthToken({ token: old }, () => resolve());
+      else resolve();
+    });
+  }
+  async function request(url, init2 = {}, { retry = true } = {}) {
+    const t = await token(false).catch((e) => {
+      if (e.code === "auth") throw new DriveError("auth", "Sign in to Google Drive first");
+      throw e;
+    });
+    let res;
+    try {
+      res = await f(url, { ...init2, headers: { ...init2.headers || {}, Authorization: "Bearer " + t } });
+    } catch (e) {
+      throw new DriveError("offline", "Network error: could not reach Google Drive", { cause: e });
+    }
+    if (res.status === 401 && retry) {
+      await dropToken(t);
+      return request(url, init2, { retry: false });
+    }
+    if (res.ok) return res;
+    let body = null;
+    try {
+      body = await res.json();
+    } catch {
+    }
+    const reason = body && body.error && (body.error.errors && body.error.errors[0] && body.error.errors[0].reason);
+    const message = body && body.error && body.error.message || res.statusText || "HTTP " + res.status;
+    if (res.status === 401) {
+      throw new DriveError("auth", "Google session expired. Sign in again.", { status: 401 });
+    }
+    if (res.status === 404) throw new DriveError("not-found", "File not found (deleted, moved, or no access)", { status: 404 });
+    if (res.status === 429) throw new DriveError("quota", "Google Drive rate limit hit. Try again shortly.", { status: 429 });
+    if (res.status === 403 && /rateLimit|quota|userRateLimit/i.test(reason || "")) throw new DriveError("quota", "Google Drive rate limit hit. Try again shortly.", { status: 403 });
+    if (res.status === 403) throw new DriveError("forbidden", message, { status: 403, reason });
+    throw new DriveError("http", message, { status: res.status });
+  }
+  const json2 = async (url, init2) => (await request(url, init2)).json();
+  const norm = (x2) => ({ id: x2.id, name: x2.name, mimeType: x2.mimeType, modifiedTime: x2.modifiedTime, size: x2.size != null ? Number(x2.size) : void 0, version: x2.version, parents: x2.parents, canEdit: !x2.capabilities || x2.capabilities.canEdit !== false });
+  const api = {
+    async isSignedIn() {
+      try {
+        await token(false);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    async signIn() {
+      cachedToken = null;
+      cachedToken = await getTokenRaw(true);
+      return true;
+    },
+    async signOut() {
+      const t = cachedToken || await getTokenRaw(false).catch(() => null);
+      if (t) {
+        try {
+          await f("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(t), { method: "POST" });
+        } catch {
+        }
+      }
+      await dropToken(t);
+      if (identity && identity.clearAllCachedAuthTokens) await new Promise((r2) => identity.clearAllCachedAuthTokens(() => r2()));
+    },
+    async getAccountLabel() {
+      const j2 = await json2(`${API}/about?fields=user(emailAddress,displayName)`);
+      return j2.user && (j2.user.emailAddress || j2.user.displayName) || "";
+    },
+    // Markdown-ish files (not Google Docs), optionally filtered by name. Newest first.
+    async listFiles({ query = "", pageToken, parentId } = {}) {
+      const parts = [
+        "trashed = false",
+        "mimeType != 'application/vnd.google-apps.folder'",
+        "mimeType != 'application/vnd.google-apps.document'",
+        // Drive's `contains` matches whole-word prefixes and its tokenization of 'notes.md' is not documented, so match the
+        // bare tokens AND the mime types broadly, then filter precisely by extension client-side (see filter below).
+        "(name contains 'md' or name contains '.md' or name contains 'markdown' or name contains 'mdown' or mimeType = 'text/markdown' or mimeType = 'text/x-markdown')"
+      ];
+      if (query.trim()) parts.push(`name contains '${q(query.trim())}'`);
+      if (parentId) parts.push(`'${q(parentId)}' in parents`);
+      const p = new URLSearchParams({ q: parts.join(" and "), orderBy: "modifiedTime desc", pageSize: "50", fields: `nextPageToken,files(${FILE_FIELDS})`, supportsAllDrives: "true", includeItemsFromAllDrives: "true" });
+      if (pageToken) p.set("pageToken", pageToken);
+      const j2 = await json2(`${API}/files?${p}`);
+      const files = (j2.files || []).filter((x2) => /\.(md|markdown|mdown)$/i.test(x2.name) || /markdown/.test(x2.mimeType || "")).map(norm);
+      return { files, nextPageToken: j2.nextPageToken || null };
+    },
+    async listFolders({ parentId = "root", pageToken } = {}) {
+      const p = new URLSearchParams({ q: `mimeType = 'application/vnd.google-apps.folder' and trashed = false and '${q(parentId)}' in parents`, orderBy: "name", pageSize: "100", fields: "nextPageToken,files(id,name)", supportsAllDrives: "true", includeItemsFromAllDrives: "true" });
+      if (pageToken) p.set("pageToken", pageToken);
+      const j2 = await json2(`${API}/files?${p}`);
+      return { folders: j2.files || [], nextPageToken: j2.nextPageToken || null };
+    },
+    async getMetadata(id) {
+      return norm(await json2(`${API}/files/${encodeURIComponent(id)}?fields=${encodeURIComponent(FILE_FIELDS)}&supportsAllDrives=true`));
+    },
+    // -> { id, name, text, modifiedTime, version, canEdit }
+    async readFile(id) {
+      const meta = await api.getMetadata(id);
+      if (/^application\/vnd\.google-apps\./.test(meta.mimeType || "")) throw new DriveError("http", "Google Docs files are not Markdown; export/convert first.");
+      const res = await request(`${API}/files/${encodeURIComponent(id)}?alt=media&supportsAllDrives=true`);
+      return { ...meta, text: await res.text() };
+    },
+    // Save in place. If Drive's modifiedTime differs from the one we loaded, throw DriveError('conflict') unless force.
+    // -> { id, name, modifiedTime, version }
+    async saveFile(id, text, { expectedModifiedTime, force = false } = {}) {
+      const cur = await api.getMetadata(id);
+      if (cur.canEdit === false) throw new DriveError("read-only", "You only have view access to this file");
+      if (!force && expectedModifiedTime && cur.modifiedTime !== expectedModifiedTime) {
+        throw new DriveError("conflict", "This file changed in Drive since you opened it", { remoteModifiedTime: cur.modifiedTime, expectedModifiedTime });
+      }
+      const res = await request(`${UPLOAD}/files/${encodeURIComponent(id)}?uploadType=media&supportsAllDrives=true&fields=${encodeURIComponent(FILE_FIELDS)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "text/markdown; charset=UTF-8" },
+        body: text
+      });
+      return norm(await res.json());
+    },
+    // Create a new .md file (optionally inside parentId).
+    async createFile(name, text, { parentId } = {}) {
+      const n = /\.(md|markdown|mdown)$/i.test(name) ? name : name + ".md";
+      const meta = { name: n, mimeType: "text/markdown" };
+      if (parentId) meta.parents = [parentId];
+      const b2 = "mdwe" + Math.random().toString(36).slice(2);
+      const body = `--${b2}\r
+Content-Type: application/json; charset=UTF-8\r
+\r
+${JSON.stringify(meta)}\r
+--${b2}\r
+Content-Type: text/markdown; charset=UTF-8\r
+\r
+${text}\r
+--${b2}--`;
+      const res = await request(`${UPLOAD}/files?uploadType=multipart&supportsAllDrives=true&fields=${encodeURIComponent(FILE_FIELDS)}`, {
+        method: "POST",
+        headers: { "Content-Type": `multipart/related; boundary=${b2}` },
+        body
+      });
+      return norm(await res.json());
+    }
+  };
+  return api;
+}
+let idCounter = 0;
+const uid = (p) => `${p}-${++idCounter}`;
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k2, v2] of Object.entries(props || {})) {
+    if (v2 == null || v2 === false) continue;
+    if (k2 === "class") el.className = v2;
+    else if (k2 === "text") el.textContent = v2;
+    else if (k2.startsWith("on") && typeof v2 === "function") el.addEventListener(k2.slice(2).toLowerCase(), v2);
+    else el.setAttribute(k2, v2 === true ? "" : String(v2));
+  }
+  for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+  return el;
+}
+const SVG_NS = "http://www.w3.org/2000/svg";
+function icon(kind) {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("class", "gdui-ico");
+  svg.setAttribute("aria-hidden", "true");
+  const paths = kind === "folder" ? ["M1.5 3.5h4l1.5 1.5h7.5v8h-13z"] : ["M3.5 1.5h6l3 3v10h-9z", "M9.5 1.5v3h3", "M5.5 8h5M5.5 10.5h5"];
+  for (const d of paths) {
+    const p = document.createElementNS(SVG_NS, "path");
+    p.setAttribute("d", d);
+    svg.append(p);
+  }
+  return svg;
+}
+function resolveTheme(theme) {
+  if (theme === "dark" || theme === "light") return theme;
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+}
+const toDate = (v2) => v2 instanceof Date ? v2 : new Date(v2);
+const valid = (d) => d instanceof Date && !isNaN(d.getTime());
+function formatFull(v2) {
+  const d = toDate(v2);
+  return valid(d) ? d.toLocaleString([], { dateStyle: "full", timeStyle: "medium" }) : "";
+}
+function formatRelative(v2, now = Date.now()) {
+  const d = toDate(v2);
+  if (!valid(d)) return "—";
+  const s = Math.round((now - d.getTime()) / 1e3);
+  if (s < 45 && s > -60) return "just now";
+  const rtf = new Intl.RelativeTimeFormat(void 0, { numeric: "auto" });
+  const min = Math.round(s / 60), hr = Math.round(s / 3600), day = Math.round(s / 86400);
+  if (s < 0) return d.toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" });
+  if (min < 60) return rtf.format(-min, "minute");
+  if (hr < 24) return rtf.format(-hr, "hour");
+  if (day < 7) return rtf.format(-day, "day");
+  const sameYear = d.getFullYear() === new Date(now).getFullYear();
+  return d.toLocaleDateString([], sameYear ? { month: "short", day: "numeric" } : { year: "numeric", month: "short", day: "numeric" });
+}
+function formatSize(n) {
+  if (n == null || n === "" || isNaN(Number(n))) return "—";
+  n = Number(n);
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return (n / 1024).toFixed(n < 10240 ? 1 : 0) + " KB";
+  return (n / 1048576).toFixed(1) + " MB";
+}
+function formatClock(v2) {
+  const d = toDate(v2);
+  return valid(d) ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+}
+function classifyError(e) {
+  const code = e && e.code, status = e && (e.status || (typeof code === "number" ? code : 0));
+  const msg = e && e.message || String(e || "Unknown error");
+  if (code === "not-configured") return { kind: "notconfigured", title: "Google Drive isn’t set up yet", message: "Google Drive isn’t set up yet: the extension needs an OAuth client ID, see README." };
+  if (code === "auth-cancelled") return { kind: "signedout", title: "Sign-in cancelled", message: "Sign-in was cancelled. Sign in with Google to continue." };
+  if (code === "auth" || code === 401 || status === 401) return { kind: "signedout", title: "Sign in required", message: "Sign in with Google to access your Drive files." };
+  if (code === "offline") return { kind: "offline", title: "You’re offline", message: "Couldn’t reach Google Drive. Check your connection and try again." };
+  if (code === "forbidden" || code === 403 || status === 403) return { kind: "forbidden", title: "Permission denied", message: "Google Drive denied access. Make sure you granted this extension permission to view your Drive files, or sign out and sign in again." };
+  if (code === "quota") return { kind: "quota", title: "Too many requests", message: "Google Drive rate limit reached. Wait a moment, then retry." };
+  if (code === "not-found" || code === 404 || status === 404) return { kind: "notfound", title: "Not found", message: "That item was not found (it may have been deleted, moved, or you lost access)." };
+  return { kind: "error", title: "Something went wrong", message: msg };
+}
+function statePanel({ title, message, spinner = false, error: error2 = false, actions = [] }) {
+  const el = h("div", { class: "gdui-state" + (error2 ? " gdui-is-error" : "") });
+  if (spinner) el.append(h("div", { class: "gdui-spinner", "aria-hidden": "true" }));
+  if (title) el.append(h("h3", { text: title }));
+  if (message) el.append(h("p", { text: message }));
+  if (actions.length) el.append(h("div", { class: "gdui-actions" }, actions.map((a) => h("button", { type: "button", class: "gdui-btn" + (a.primary ? " gdui-primary" : ""), text: a.label, onClick: a.onClick, "data-action": a.id || null }))));
+  return el;
+}
+const stack = [];
+const FOCUSABLE = 'a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])';
+function createModal({ theme, title, role = "dialog", className = "", backdropCancels = true, cancelValue = null } = {}) {
+  const prevFocus = document.activeElement;
+  const overlay = h("div", { class: "gdui gdui-overlay", "data-theme": resolveTheme(theme) });
+  const titleEl = h("h2", { class: "gdui-title", id: uid("gdui-title"), text: title });
+  const head = h("div", { class: "gdui-head" }, h("div", { class: "gdui-title-wrap" }, titleEl));
+  const body = h("div", { class: "gdui-body" });
+  const foot = h("div", { class: "gdui-foot" });
+  const dialog = h("div", { class: "gdui-dialog " + className, role, "aria-modal": "true", "aria-labelledby": titleEl.id, tabindex: "-1" }, head, body, foot);
+  overlay.append(dialog);
+  let resolve;
+  const promise = new Promise((r2) => {
+    resolve = r2;
+  });
+  const m2 = { overlay, dialog, head, titleEl, body, foot, closed: false, promise, onClose: null, cancelValue };
+  const inerted = [];
+  let downOnOverlay = false;
+  const focusables = () => [...dialog.querySelectorAll(FOCUSABLE)].filter((el) => !el.disabled && !el.hidden && el.getClientRects().length > 0);
+  m2.ensureFocus = (el) => {
+    if (m2.closed || dialog.contains(document.activeElement) && document.activeElement !== dialog) return;
+    (el && !el.disabled ? el : focusables()[0] || dialog).focus();
+  };
+  m2.close = (value) => {
+    if (m2.closed) return;
+    m2.closed = true;
+    const i = stack.indexOf(m2);
+    if (i >= 0) stack.splice(i, 1);
+    document.removeEventListener("keydown", onDocKey, true);
+    document.removeEventListener("focusin", onFocusIn, true);
+    try {
+      m2.onClose && m2.onClose();
+    } catch {
+    }
+    overlay.remove();
+    for (const [el, was] of inerted) el.inert = was;
+    if (prevFocus && prevFocus.isConnected && typeof prevFocus.focus === "function") prevFocus.focus();
+    resolve(value);
+  };
+  const cancel = () => m2.close(m2.cancelValue);
+  const onTab = (e) => {
+    const f = focusables();
+    if (!f.length) {
+      e.preventDefault();
+      dialog.focus();
+      return;
+    }
+    const first2 = f[0], last = f[f.length - 1], a = document.activeElement;
+    if (e.shiftKey && (a === first2 || a === dialog || !dialog.contains(a))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (a === last || !dialog.contains(a))) {
+      e.preventDefault();
+      first2.focus();
+    }
+  };
+  overlay.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      cancel();
+    } else if (e.key === "Tab") onTab(e);
+    e.stopPropagation();
+  });
+  function onDocKey(e) {
+    if (stack[stack.length - 1] !== m2 || overlay.contains(e.target)) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      cancel();
+    } else if (e.key === "Tab") {
+      e.stopPropagation();
+      onTab(e);
+    }
+  }
+  function onFocusIn(e) {
+    if (stack[stack.length - 1] === m2 && !overlay.contains(e.target)) (focusables()[0] || dialog).focus();
+  }
+  overlay.addEventListener("mousedown", (e) => {
+    downOnOverlay = e.target === overlay;
+  });
+  overlay.addEventListener("click", (e) => {
+    if (backdropCancels && downOnOverlay && e.target === overlay) cancel();
+    downOnOverlay = false;
+  });
+  m2.mount = (focusEl) => {
+    for (const el of document.body.children) {
+      inerted.push([el, el.inert]);
+      el.inert = true;
+    }
+    stack.push(m2);
+    document.body.append(overlay);
+    document.addEventListener("keydown", onDocKey, true);
+    document.addEventListener("focusin", onFocusIn, true);
+    (focusEl || focusables()[0] || dialog).focus();
+    return m2;
+  };
+  return m2;
+}
+const button = (label, { primary = false, danger = false, onClick, id } = {}) => h("button", { type: "button", class: "gdui-btn" + (primary ? " gdui-primary" : "") + (danger ? " gdui-danger" : ""), text: label, onClick, "data-action": id || null });
+const DEBOUNCE_MS = 300;
+const call = (fn) => {
+  try {
+    return Promise.resolve(fn());
+  } catch (e) {
+    return Promise.reject(e);
+  }
+};
+function createListbox(ul, { owners = [], onActivate, onSelect } = {}) {
+  const lb = { items: [], index: -1 };
+  const setActive = (id) => {
+    for (const o of [ul, ...owners]) {
+      if (id) o.setAttribute("aria-activedescendant", id);
+      else o.removeAttribute("aria-activedescendant");
+    }
+  };
+  lb.select = (i, { scroll = true } = {}) => {
+    if (!lb.items.length) {
+      lb.index = -1;
+      setActive(null);
+      onSelect && onSelect(null);
+      return;
+    }
+    i = Math.max(0, Math.min(lb.items.length - 1, i));
+    if (lb.index >= 0 && lb.items[lb.index]) lb.items[lb.index].el.setAttribute("aria-selected", "false");
+    lb.index = i;
+    const it = lb.items[i];
+    it.el.setAttribute("aria-selected", "true");
+    setActive(it.el.id);
+    if (scroll && it.el.scrollIntoView) it.el.scrollIntoView({ block: "nearest" });
+    onSelect && onSelect(it.data);
+  };
+  lb.clear = () => {
+    ul.textContent = "";
+    lb.items = [];
+    lb.index = -1;
+    setActive(null);
+    onSelect && onSelect(null);
+  };
+  lb.add = (data, el) => {
+    el.id = uid("gdui-opt");
+    el.setAttribute("role", "option");
+    el.setAttribute("aria-selected", "false");
+    const i = lb.items.length;
+    lb.items.push({ el, data });
+    el.addEventListener("click", () => lb.select(i, { scroll: false }));
+    el.addEventListener("dblclick", () => {
+      lb.select(i, { scroll: false });
+      onActivate && onActivate(data);
+    });
+    ul.append(el);
+  };
+  lb.selected = () => lb.index >= 0 ? lb.items[lb.index].data : null;
+  lb.key = (e, { fromInput = false } = {}) => {
+    const n = lb.items.length, page = 8;
+    switch (e.key) {
+      case "ArrowDown":
+        lb.select(lb.index < 0 ? 0 : lb.index + 1);
+        break;
+      case "ArrowUp":
+        lb.select(lb.index < 0 ? n - 1 : lb.index - 1);
+        break;
+      case "PageDown":
+        lb.select(lb.index + page);
+        break;
+      case "PageUp":
+        lb.select(lb.index - page);
+        break;
+      case "Home":
+        if (fromInput) return false;
+        lb.select(0);
+        break;
+      case "End":
+        if (fromInput) return false;
+        lb.select(n - 1);
+        break;
+      default:
+        return false;
+    }
+    e.preventDefault();
+    return true;
+  };
+  ul.addEventListener("keydown", (e) => {
+    if (lb.key(e)) return;
+    if (e.key === "Enter" && lb.selected()) {
+      e.preventDefault();
+      onActivate && onActivate(lb.selected());
+    }
+  });
+  return lb;
+}
+const liveRegion = () => h("div", { class: "gdui-vh", role: "status", "aria-live": "polite" });
+function openDriveDialog({ api, theme, onPick } = {}) {
+  const m2 = createModal({ theme, title: "Open from Drive", cancelValue: null });
+  const live = liveRegion();
+  const accountEl = h("span", { class: "gdui-account" });
+  m2.head.append(accountEl);
+  const search = h("input", { type: "search", class: "gdui-input", placeholder: "Search Markdown files by name (empty = recent)", "aria-label": "Search Drive files by name", autocomplete: "off", spellcheck: "false" });
+  const banner = h("div", { class: "gdui-banner", role: "status", hidden: true });
+  const ul = h("ul", { class: "gdui-list", role: "listbox", "aria-label": "Drive files", tabindex: "0" });
+  const colhead = h("div", { class: "gdui-colhead", "aria-hidden": "true" }, h("span", { text: "Name" }), h("span", { text: "Modified" }), h("span", { class: "gdui-num", text: "Size" }));
+  const stateHost = h("div", { class: "gdui-state-host" });
+  stateHost.hidden = true;
+  const moreHost = h("div", { class: "gdui-more", hidden: true });
+  const listwrap = h("div", { class: "gdui-listwrap" }, colhead, ul, stateHost, moreHost);
+  search.setAttribute("aria-controls", ul.id = uid("gdui-list"));
+  m2.body.append(search, banner, listwrap, live);
+  const signOutLink = h("button", { type: "button", class: "gdui-link", text: "Sign out", hidden: true });
+  const openingEl = h("span", { class: "gdui-opening", hidden: true }, h("span", { class: "gdui-spinner gdui-sm", "aria-hidden": "true" }), "Opening…");
+  const cancelBtn = button("Cancel", { onClick: () => m2.close(null), id: "cancel" });
+  const openBtn = button("Open", { primary: true, onClick: () => activate(lb.selected()), id: "open" });
+  openBtn.disabled = true;
+  m2.foot.append(h("div", { class: "gdui-grow" }, signOutLink, openingEl), cancelBtn, openBtn);
+  let seq = 0, nextPageToken = null, query = "", timer = null, busy = false, opening = false, signedIn = null;
+  const lb = createListbox(ul, { owners: [search], onActivate: (f) => activate(f), onSelect: (f) => {
+    openBtn.disabled = !f || opening;
+  } });
+  m2.onClose = () => {
+    clearTimeout(timer);
+    seq++;
+    removeEventListener("online", onOnline);
+    removeEventListener("offline", onOffline);
+  };
+  const showList = (on) => {
+    ul.hidden = !on;
+    colhead.hidden = !on;
+  };
+  function showState(opts) {
+    lb.clear();
+    showList(false);
+    moreHost.hidden = true;
+    nextPageToken = null;
+    stateHost.textContent = "";
+    stateHost.hidden = false;
+    stateHost.className = "gdui-state-host gdui-state-fill";
+    const p = statePanel(opts);
+    stateHost.append(p);
+    live.textContent = [opts.title, opts.message].filter(Boolean).join(". ");
+    return p;
+  }
+  const hideState = () => {
+    stateHost.hidden = true;
+    stateHost.textContent = "";
+    showList(true);
+  };
+  const signInAction = () => ({ id: "signin", label: "Sign in with Google", primary: true, onClick: doSignIn });
+  const retryAction = (primary = true) => ({ id: "retry", label: "Retry", primary, onClick: () => load({ reset: true }) });
+  function setSignedIn(v2) {
+    signedIn = v2;
+    signOutLink.hidden = !v2;
+    if (!v2) accountEl.textContent = "";
+  }
+  function renderRow(f) {
+    const nameCell = h("span", { class: "gdui-fname" }, icon("file"), h("span", { text: f.name || "(untitled)", title: f.name || "" }));
+    if (f.canEdit === false) nameCell.append(h("span", { class: "gdui-badge", text: "Read-only", title: "You only have view access to this file" }));
+    const full = f.modifiedTime ? formatFull(f.modifiedTime) : "";
+    const row = h(
+      "li",
+      { class: "gdui-row", title: f.name || "" },
+      nameCell,
+      h("span", { class: "gdui-cell", text: f.modifiedTime ? formatRelative(f.modifiedTime) : "—", title: full }),
+      h("span", { class: "gdui-cell gdui-num", text: formatSize(f.size) })
+    );
+    lb.add(f, row);
+  }
+  function renderMore(error2) {
+    moreHost.textContent = "";
+    if (!nextPageToken) {
+      moreHost.hidden = true;
+      return;
+    }
+    moreHost.hidden = false;
+    if (error2) moreHost.append(h("span", { class: "gdui-err", text: "Couldn’t load more: " + classifyError(error2).message }));
+    if (busy) moreHost.append(h("span", { class: "gdui-spinner gdui-sm", "aria-hidden": "true" }), h("span", { class: "gdui-muted", text: "Loading…" }));
+    else moreHost.append(h("button", { type: "button", class: "gdui-btn", text: error2 ? "Retry" : "Load more", "data-action": "more", onClick: () => load({ reset: false }) }));
+  }
+  async function load({ reset: reset2 }) {
+    const my = ++seq;
+    busy = true;
+    if (reset2) {
+      showState({ title: "Loading…", spinner: true });
+      stateHost.setAttribute("aria-busy", "true");
+    } else renderMore();
+    banner.hidden = navigator.onLine !== false;
+    if (navigator.onLine === false) {
+      banner.textContent = "You’re offline. Showing what was loaded; new requests may fail.";
+      banner.hidden = false;
+    }
+    if (reset2 && navigator.onLine === false) {
+      busy = false;
+      stateHost.removeAttribute("aria-busy");
+      showState({ title: "You’re offline", message: "Google Drive can’t be reached without an internet connection. This will reload automatically when you’re back online.", error: true, actions: [retryAction(false)] });
+      banner.hidden = true;
+      return;
+    }
+    try {
+      if (reset2 && typeof api.isSignedIn === "function") {
+        const ok = await call(() => api.isSignedIn());
+        if (my !== seq) return;
+        setSignedIn(!!ok);
+        if (!ok) {
+          busy = false;
+          showState({ title: "Sign in to Google Drive", message: "Sign in to browse and open Markdown files from your Drive.", actions: [signInAction()] });
+          focusSoon();
+          return;
+        }
+        loadAccount();
+      }
+      const res = await call(() => api.listFiles({ query, pageToken: reset2 ? void 0 : nextPageToken }));
+      if (my !== seq) return;
+      busy = false;
+      stateHost.removeAttribute("aria-busy");
+      const files = res && res.files || [];
+      nextPageToken = res && res.nextPageToken || null;
+      if (signedIn === null) setSignedIn(true);
+      if (reset2) {
+        if (!files.length) {
+          showState(query ? { title: "No matching files", message: `Nothing found for “${query}”. Only Markdown/text files are shown.` } : { title: "No Markdown files yet", message: "No Markdown files were found in your Drive." });
+          return;
+        }
+        hideState();
+      }
+      const prevCount = lb.items.length;
+      files.forEach(renderRow);
+      renderMore();
+      if (reset2) lb.select(0, { scroll: false });
+      live.textContent = reset2 ? `${files.length} file${files.length === 1 ? "" : "s"}${nextPageToken ? ", more available" : ""}` : `${files.length} more loaded, ${lb.items.length} total`;
+      if (!reset2 && files.length && prevCount === 0) lb.select(0);
+    } catch (e) {
+      if (my !== seq) return;
+      busy = false;
+      stateHost.removeAttribute("aria-busy");
+      if (!reset2) {
+        renderMore(e);
+        return;
+      }
+      handleListError(e);
+    }
+  }
+  function handleListError(e) {
+    const c2 = classifyError(e);
+    if (c2.kind === "signedout") {
+      setSignedIn(false);
+      showState({ title: c2.title, message: c2.message, actions: [signInAction()] });
+    } else if (c2.kind === "notconfigured") showState({ title: c2.title, message: c2.message, error: true });
+    else if (c2.kind === "forbidden") showState({ title: c2.title, message: c2.message, error: true, actions: [retryAction(true), { id: "signin", label: "Sign in again", onClick: doSignIn }] });
+    else if (c2.kind === "offline") showState({ title: c2.title, message: c2.message, error: true, actions: [retryAction()] });
+    else showState({ title: c2.title, message: c2.message, error: true, actions: [retryAction()] });
+    focusSoon();
+  }
+  function focusSoon() {
+    m2.ensureFocus(search);
+  }
+  async function loadAccount() {
+    if (typeof api.getAccountLabel !== "function") return;
+    try {
+      const l = await call(() => api.getAccountLabel());
+      if (!m2.closed && l && signedIn) accountEl.textContent = String(l);
+    } catch {
+    }
+  }
+  async function doSignIn() {
+    const btn = stateHost.querySelector('[data-action="signin"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Signing in…";
+    }
+    try {
+      await call(() => api.signIn());
+      if (m2.closed) return;
+      setSignedIn(true);
+      await load({ reset: true });
+    } catch (e) {
+      if (m2.closed) return;
+      const c2 = classifyError(e);
+      if (c2.kind === "notconfigured") showState({ title: c2.title, message: c2.message, error: true });
+      else showState({ title: c2.title === "Sign-in cancelled" ? c2.title : "Sign-in failed", message: e && e.code === "auth-cancelled" ? c2.message : e && e.message || c2.message, error: e && e.code !== "auth-cancelled", actions: [signInAction()] });
+      focusSoon();
+    }
+  }
+  async function doSignOut() {
+    signOutLink.disabled = true;
+    try {
+      await call(() => api.signOut());
+    } catch {
+    }
+    signOutLink.disabled = false;
+    if (m2.closed) return;
+    seq++;
+    setSignedIn(false);
+    showState({ title: "Signed out", message: "You’re signed out of Google Drive.", actions: [signInAction()] });
+    m2.ensureFocus(stateHost.querySelector("button"));
+  }
+  async function activate(f) {
+    if (!f || opening) return;
+    const pick = { id: f.id, name: f.name, modifiedTime: f.modifiedTime, size: f.size, canEdit: f.canEdit };
+    if (typeof onPick !== "function") return m2.close(pick);
+    let r2;
+    try {
+      r2 = onPick(pick);
+    } catch (e) {
+      return showPickError(e);
+    }
+    if (r2 && typeof r2.then === "function") {
+      opening = true;
+      openBtn.disabled = true;
+      openingEl.hidden = false;
+      live.textContent = "Opening " + f.name;
+      try {
+        await r2;
+      } catch (e) {
+        opening = false;
+        openingEl.hidden = true;
+        openBtn.disabled = !lb.selected();
+        return showPickError(e);
+      }
+      opening = false;
+    }
+    m2.close(pick);
+  }
+  function showPickError(e) {
+    banner.textContent = "Couldn’t open the file: " + classifyError(e).message;
+    banner.hidden = false;
+    live.textContent = banner.textContent;
+  }
+  const onOnline = () => {
+    banner.hidden = true;
+    if (stateHost.querySelector('[data-action="retry"]') && !busy) load({ reset: true });
+  };
+  const onOffline = () => {
+    if (lb.items.length) {
+      banner.textContent = "You’re offline. Showing what was loaded; new requests may fail.";
+      banner.hidden = false;
+    }
+  };
+  addEventListener("online", onOnline);
+  addEventListener("offline", onOffline);
+  search.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      if (search.value.trim() === query) return;
+      query = search.value.trim();
+      load({ reset: true });
+    }, DEBOUNCE_MS);
+  });
+  search.addEventListener("keydown", (e) => {
+    if (lb.key(e, { fromInput: true })) return;
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+        const q2 = search.value.trim();
+        if (q2 !== query) {
+          query = q2;
+          load({ reset: true });
+          return;
+        }
+      }
+      activate(lb.selected());
+    }
+  });
+  signOutLink.addEventListener("click", doSignOut);
+  m2.mount(search);
+  showState({ title: "Loading…", spinner: true });
+  load({ reset: true });
+  return m2.promise;
+}
+const MD_EXT = /\.(md|markdown|mdown)$/i;
+function normalizeDriveName(name) {
+  const n = String(name || "").trim();
+  if (!n) return "";
+  return MD_EXT.test(n) ? n : n.replace(/\.+$/, "") + ".md";
+}
+function validateName(name) {
+  const n = String(name || "").trim();
+  if (!n || /^\.+$/.test(n) || n === ".md") return "Enter a file name.";
+  if (/[\\/]/.test(n)) return "File names can’t contain / or \\.";
+  if (normalizeDriveName(n).length > 255) return "That name is too long.";
+  return "";
+}
+function saveToDriveDialog({ api, defaultName = "Untitled.md", theme } = {}) {
+  const m2 = createModal({ theme, title: "Save to Drive", className: "gdui-narrow", cancelValue: null });
+  const live = liveRegion();
+  const nameId = uid("gdui-name");
+  const input = h("input", { type: "text", class: "gdui-input", id: nameId, value: defaultName, autocomplete: "off", spellcheck: "false", "aria-describedby": nameId + "-hint" });
+  const hint = h("p", { class: "gdui-hint", id: nameId + "-hint" });
+  const errEl = h("div", { class: "gdui-error-line", role: "alert", hidden: true });
+  m2.body.append(h("div", {}, h("label", { class: "gdui-label", for: nameId, text: "File name" }), input, hint, errEl));
+  const hasFolders = typeof (api && api.listFolders) === "function";
+  const path = [{ id: void 0, name: "My Drive" }];
+  let fSeq = 0, fToken = null, fBusy = false;
+  let folderUl, fb, crumbs, upBtn, fMore, fState, foldersWrap;
+  if (hasFolders) {
+    crumbs = h("div", { class: "gdui-crumbs" });
+    upBtn = h("button", { type: "button", class: "gdui-btn gdui-up", text: "↑ Up", "aria-label": "Up one folder", "data-action": "up", onClick: goUp });
+    folderUl = h("ul", { class: "gdui-list", role: "listbox", "aria-label": "Folders (Enter opens the folder)", tabindex: "0" });
+    fMore = h("div", { class: "gdui-more", hidden: true });
+    fState = h("div", { class: "gdui-state-host", hidden: true });
+    foldersWrap = h(
+      "div",
+      { class: "gdui-folders" },
+      h("span", { class: "gdui-label", text: "Location" }),
+      h("div", { class: "gdui-crumbs" }, crumbs, upBtn),
+      h("div", { class: "gdui-listwrap" }, folderUl, fState, fMore)
+    );
+    m2.body.append(foldersWrap);
+    fb = createListbox(folderUl, { onActivate: (f) => enter2(f) });
+  }
+  m2.body.append(live);
+  const signInBtn = h("button", { type: "button", class: "gdui-btn", text: "Sign in with Google", "data-action": "signin", hidden: true, onClick: doSignIn });
+  const cancelBtn = button("Cancel", { onClick: () => m2.close(null), id: "cancel" });
+  const saveBtn = button("Save", { primary: true, onClick: submit, id: "save" });
+  m2.foot.append(h("div", { class: "gdui-grow" }, signInBtn), cancelBtn, saveBtn);
+  function refreshHint() {
+    const err = validateName(input.value);
+    const final = normalizeDriveName(input.value);
+    hint.textContent = err ? "" : `Will be saved as “${final}” in ${path.map((p) => p.name).join(" / ")}`;
+    saveBtn.disabled = !!err;
+    return err;
+  }
+  function submit() {
+    const err = refreshHint();
+    if (err) {
+      errEl.textContent = err;
+      errEl.hidden = false;
+      input.setAttribute("aria-invalid", "true");
+      input.focus();
+      return;
+    }
+    const cur = path[path.length - 1];
+    const out = { name: normalizeDriveName(input.value) };
+    if (cur.id) out.parentId = cur.id;
+    m2.close(out);
+  }
+  input.addEventListener("input", () => {
+    errEl.hidden = true;
+    input.removeAttribute("aria-invalid");
+    refreshHint();
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submit();
+      return;
+    }
+    if (fb && fb.key(e, { fromInput: true })) return;
+  });
+  function renderCrumbs() {
+    crumbs.textContent = "";
+    crumbs.append(h("span", { text: "Saving in:" }), h("strong", { text: path.map((p) => p.name).join(" / ") }));
+    upBtn.disabled = path.length <= 1;
+    refreshHint();
+  }
+  function goUp() {
+    if (path.length > 1) {
+      path.pop();
+      loadFolders(true);
+    }
+  }
+  function enter2(f) {
+    path.push({ id: f.id, name: f.name });
+    loadFolders(true);
+  }
+  function showFolderState(opts) {
+    fb.clear();
+    folderUl.hidden = true;
+    fMore.hidden = true;
+    fState.textContent = "";
+    fState.hidden = false;
+    fState.className = "gdui-state-host gdui-state-fill";
+    fState.append(statePanel(opts));
+  }
+  function renderFMore(error2) {
+    fMore.textContent = "";
+    if (!fToken) {
+      fMore.hidden = true;
+      return;
+    }
+    fMore.hidden = false;
+    if (error2) fMore.append(h("span", { class: "gdui-err", text: "Couldn’t load more folders." }));
+    if (fBusy) fMore.append(h("span", { class: "gdui-spinner gdui-sm", "aria-hidden": "true" }));
+    else fMore.append(h("button", { type: "button", class: "gdui-btn", text: error2 ? "Retry" : "Load more", onClick: () => loadFolders(false) }));
+  }
+  async function loadFolders(reset2) {
+    const my = ++fSeq;
+    fBusy = true;
+    renderCrumbs();
+    if (reset2) {
+      fToken = null;
+      showFolderState({ title: "Loading folders…", spinner: true });
+    } else renderFMore();
+    if (navigator.onLine === false && reset2) {
+      fBusy = false;
+      showFolderState({ title: "You’re offline", message: "Folders can’t be listed offline. You can still save to the selected location.", error: true, actions: [{ id: "retry", label: "Retry", onClick: () => loadFolders(true) }] });
+      return;
+    }
+    try {
+      if (reset2 && typeof api.isSignedIn === "function") {
+        const ok = await call(() => api.isSignedIn());
+        if (my !== fSeq) return;
+        signInBtn.hidden = !!ok;
+        saveBtn.disabled = !ok || !!validateName(input.value);
+        if (!ok) {
+          fBusy = false;
+          showFolderState({ title: "Sign in to Google Drive", message: "Sign in to choose a folder and save the file.", actions: [{ id: "signin", label: "Sign in with Google", primary: true, onClick: doSignIn }] });
+          return;
+        }
+      }
+      const cur = path[path.length - 1];
+      const res = await call(() => api.listFolders({ parentId: cur.id || "root", pageToken: reset2 ? void 0 : fToken }));
+      if (my !== fSeq) return;
+      fBusy = false;
+      fToken = res && res.nextPageToken || null;
+      const list = res && (res.folders || res.files) || [];
+      if (reset2) {
+        fb.clear();
+        fState.hidden = true;
+        fState.textContent = "";
+        folderUl.hidden = false;
+        if (!list.length) {
+          showFolderState({ title: "No subfolders", message: "This location has no folders. The file will be saved here." });
+          return;
+        }
+      }
+      for (const f of list) {
+        const row = h("li", { class: "gdui-row gdui-folder-row", title: f.name }, h("span", { class: "gdui-fname" }, icon("folder"), h("span", { text: f.name })));
+        fb.add(f, row);
+      }
+      renderFMore();
+      if (reset2) fb.select(0, { scroll: false });
+      live.textContent = `${list.length} folder${list.length === 1 ? "" : "s"}`;
+    } catch (e) {
+      if (my !== fSeq) return;
+      fBusy = false;
+      if (!reset2) return renderFMore(e);
+      const c2 = classifyError(e);
+      if (c2.kind === "signedout") {
+        signInBtn.hidden = false;
+        saveBtn.disabled = true;
+        showFolderState({ title: c2.title, message: c2.message, actions: [{ id: "signin", label: "Sign in with Google", primary: true, onClick: doSignIn }] });
+      } else showFolderState({ title: c2.title, message: c2.message + " You can still save to the selected location.", error: true, actions: c2.kind === "notconfigured" ? [] : [{ id: "retry", label: "Retry", onClick: () => loadFolders(true) }] });
+    }
+  }
+  async function doSignIn() {
+    signInBtn.disabled = true;
+    try {
+      await call(() => api.signIn());
+      if (m2.closed) return;
+      signInBtn.disabled = false;
+      if (hasFolders) loadFolders(true);
+      else {
+        signInBtn.hidden = true;
+        refreshHint();
+      }
+    } catch (e) {
+      if (m2.closed) return;
+      signInBtn.disabled = false;
+      const c2 = classifyError(e);
+      errEl.textContent = e && e.code === "auth-cancelled" ? c2.message : c2.kind === "notconfigured" ? c2.message : "Sign-in failed: " + c2.message;
+      errEl.hidden = false;
+    }
+  }
+  m2.mount(input);
+  input.select();
+  refreshHint();
+  if (hasFolders) loadFolders(true);
+  else if (api && typeof api.isSignedIn === "function") {
+    call(() => api.isSignedIn()).then((ok) => {
+      if (m2.closed) return;
+      signInBtn.hidden = !!ok;
+      if (!ok) saveBtn.disabled = true;
+    }).catch(() => {
+    });
+  }
+  return m2.promise;
+}
+function confirmConflict({ name, remoteModifiedTime, localModifiedTime, theme } = {}) {
+  const m2 = createModal({ theme, title: "This file changed on Drive", className: "gdui-conflict", role: "alertdialog", cancelValue: "cancel", backdropCancels: false });
+  const descId = uid("gdui-desc");
+  m2.dialog.setAttribute("aria-describedby", descId);
+  const rows = [];
+  if (remoteModifiedTime) rows.push(["On Drive:", `${formatFull(remoteModifiedTime)} (${formatRelative(remoteModifiedTime)})`]);
+  if (localModifiedTime) rows.push(["Your copy loaded/edited:", formatFull(localModifiedTime)]);
+  const times = rows.length ? h("dl", { class: "gdui-times" }, rows.map(([k2, v2]) => [h("dt", { text: k2 }), h("dd", { text: v2 })])) : null;
+  const choice = (value, title, sub, cls = "") => h("button", { type: "button", class: "gdui-choice " + cls, "data-choice": value, onClick: () => m2.close(value) }, h("b", { text: title }), sub ? h("span", { class: "gdui-sub", text: sub }) : null);
+  const cancel = choice("cancel", "Cancel", null, "gdui-cancel");
+  const choices = h(
+    "div",
+    { class: "gdui-choices", role: "group", "aria-label": "Resolve conflict" },
+    choice("overwrite", "Overwrite Drive version", "Replace the version on Drive with what’s in the editor. The other changes on Drive are lost.", "gdui-danger"),
+    choice("reload", "Reload from Drive (discard my edits)", "Load the current Drive version. Your unsaved edits here are lost."),
+    choice("save-copy", "Save as a copy", "Keep both: save your edits to a new file on Drive and leave the original untouched."),
+    cancel
+  );
+  choices.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const b2 = [...choices.querySelectorAll("button")], i = b2.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    b2[(i + (e.key === "ArrowDown" ? 1 : b2.length - 1)) % b2.length].focus();
+  });
+  m2.body.append(
+    h(
+      "p",
+      { class: "gdui-msg", id: descId },
+      h("b", { text: name || "This file" }),
+      " was modified on Google Drive after you opened it. ",
+      "If you save now, you could overwrite someone else’s changes (or your own changes from another device). Choose what to do:"
+    ),
+    times,
+    choices
+  );
+  m2.foot.hidden = true;
+  m2.mount(cancel);
+  return m2.promise;
+}
+const DRIVE_STATES = ["idle", "saving", "saved", "error", "offline", "conflict", "signed-out"];
+const DRIVE_ERROR_STATUS = Object.freeze({
+  "not-configured": "signed-out",
+  auth: "signed-out",
+  "auth-cancelled": "signed-out",
+  offline: "offline",
+  conflict: "conflict",
+  "read-only": "error",
+  forbidden: "error",
+  quota: "error",
+  "not-found": "error",
+  http: "error"
+});
+const DETAIL_TEXT = { "not-configured": "not set up (see README)", "read-only": "read-only file", quota: "rate limited — try again shortly", forbidden: "permission denied", "not-found": "file not found" };
+function statusForError(err) {
+  const code = err && err.code;
+  const state2 = DRIVE_ERROR_STATUS[code] || "error";
+  return { state: state2, detail: { message: DETAIL_TEXT[code] || err && err.message || "", code, error: err } };
+}
+const TEXT = {
+  idle: () => "",
+  saving: () => "Saving to Drive…",
+  saved: (d) => "Saved to Drive" + (d.time ? " " + d.time : ""),
+  error: (d) => "Drive: save failed" + (d.message ? " — " + d.message : ""),
+  offline: () => "Drive: offline — will retry",
+  conflict: () => "Drive: file changed on Drive — resolve to save",
+  "signed-out": (d) => d.code === "not-configured" ? "Drive: " + d.message : "Drive: signed out"
+};
+function createDriveStatus(containerEl) {
+  const live = h("span", { class: "gdui-status-live", "aria-live": "polite", "aria-atomic": "true" });
+  const badge = h("span", { class: "gdui-status", "data-state": "idle", hidden: true });
+  const dot = h("span", { class: "gdui-dot", "aria-hidden": "true" });
+  const text = h("span", { class: "gdui-stext" });
+  const actionHost = h("span", { class: "gdui-sact" });
+  badge.append(dot, text, actionHost);
+  live.append(badge);
+  containerEl.append(live);
+  let current = "idle";
+  function normalize2(state2, detail) {
+    let d = {};
+    if (detail instanceof Error) d = { message: detail.message, code: detail.code };
+    else if (typeof detail === "string") d = state2 === "saved" && !isNaN(Date.parse(detail)) && /\d{4}-\d\d-\d\d/.test(detail) ? { time: formatClock(detail) } : { message: detail };
+    else if (detail instanceof Date || typeof detail === "number") d = { time: formatClock(detail) };
+    else if (detail && typeof detail === "object") {
+      d = { ...detail };
+      if (d.time != null && typeof d.time !== "string") d.time = formatClock(d.time);
+      else if (typeof d.time === "string" && /\d{4}-\d\d-\d\d/.test(d.time)) d.time = formatClock(d.time);
+    }
+    if (state2 === "saved" && !d.time) d.time = formatClock(/* @__PURE__ */ new Date());
+    if (detail instanceof Error && detail.code && DETAIL_TEXT[detail.code]) d.message = DETAIL_TEXT[detail.code];
+    return d;
+  }
+  const api = {
+    el: badge,
+    get state() {
+      return current;
+    },
+    set(state2, detail) {
+      if (!DRIVE_STATES.includes(state2)) throw new Error("createDriveStatus: unknown state " + state2);
+      current = state2;
+      const d = normalize2(state2, detail);
+      badge.dataset.state = state2;
+      badge.hidden = state2 === "idle";
+      const t = TEXT[state2](d);
+      text.textContent = t;
+      badge.title = d.message && state2 !== "idle" ? t : "";
+      actionHost.textContent = "";
+      if (d.action && d.action.label && typeof d.action.onClick === "function" && state2 !== "idle") {
+        actionHost.append(h("button", { type: "button", class: "gdui-sbtn", text: d.action.label, onClick: d.action.onClick }));
+      }
+    },
+    setError(err) {
+      const { state: state2, detail } = statusForError(err);
+      api.set(state2, detail);
+    },
+    destroy() {
+      live.remove();
+    }
+  };
+  api.set("idle");
+  return api;
+}
 const $2 = (id) => document.getElementById(id);
 const DRAFT_KEY = "mdwe.draft";
 const FILE_DRAFT_KEY = "mdwe.draft.file";
 const THEME_KEY = "mdwe.theme";
 const AUTOSAVE_MS = 800;
-const state = { loaded: false, handle: null, name: "Untitled.md", savedText: "", dirty: false, theme: "light", source: false };
+const state = { loaded: false, drive: null, handle: null, name: "Untitled.md", savedText: "", dirty: false, theme: "light", source: false };
 let editor = null;
 let draftTimer = null;
+let driveApi = createDriveApi();
+let driveStatus = null;
+let driveBusy = false;
 let suppress = false;
 const store = chrome.storage.local;
 const storeGet = (k2) => store.get(k2).then((r2) => r2[k2]);
@@ -45060,8 +46149,10 @@ function applyTheme(t) {
   editor && editor.setTheme && editor.setTheme(t);
   store.set({ [THEME_KEY]: t });
 }
-function loadDoc({ handle, name, text }, { keepDraft = false } = {}) {
+function loadDoc({ handle, name, text }, { keepDraft = false, drive = null } = {}) {
+  const prevKey = draftKey();
   state.loaded = true;
+  state.drive = drive;
   state.handle = handle;
   state.name = name;
   state.savedText = text;
@@ -45072,10 +46163,12 @@ function loadDoc({ handle, name, text }, { keepDraft = false } = {}) {
   state.savedText = editor.getMarkdown();
   if (!keepDraft) {
     clearTimeout(draftTimer);
-    store.remove([DRAFT_KEY, FILE_DRAFT_KEY]);
+    store.remove(prevKey);
   }
   renderTitle();
-  setStatus(handle ? "Opened " + name : "Opened " + name + " (read-only source: Ctrl+S will ask where to save)", handle ? 2500 : 6e3);
+  driveStatus && driveStatus.set("idle");
+  if (drive) setStatus("Opened " + name + " from Drive" + (drive.canEdit === false ? " (read-only: use Save to Drive to save a copy)" : ""), 4e3);
+  else setStatus(handle ? "Opened " + name : "Opened " + name + " (read-only source: Ctrl+S will ask where to save)", handle ? 2500 : 6e3);
 }
 let dirtyTimer = null;
 function onChange() {
@@ -45095,7 +46188,7 @@ function onChange() {
 function saveDraft() {
   state.dirty = editor.getMarkdown() !== state.savedText;
   if (!state.dirty) return clearDraft();
-  store.set({ [draftKey()]: { text: editor.getMarkdown(), name: state.name, savedAt: Date.now() } }).then(() => setStatus("Draft autosaved", 1200)).catch(() => setStatus("Draft autosave failed"));
+  store.set({ [draftKey()]: { text: editor.getMarkdown(), name: state.name, savedAt: Date.now(), drive: state.drive ? { id: state.drive.id, modifiedTime: state.drive.modifiedTime, canEdit: state.drive.canEdit } : null } }).then(() => setStatus("Draft autosaved", 1200)).catch(() => setStatus("Draft autosave failed"));
 }
 function draftKey() {
   return state.loaded ? FILE_DRAFT_KEY : DRAFT_KEY;
@@ -45119,9 +46212,11 @@ async function doSaveAs() {
     const handle = await pickSaveHandle(state.name);
     await writeHandle(handle, text);
     state.handle = handle;
+    state.drive = null;
     state.name = handle.name;
     state.savedText = text;
     state.dirty = false;
+    markEditorSaved(text);
     clearDraft();
     renderTitle();
     setStatus("Saved");
@@ -45130,12 +46225,14 @@ async function doSaveAs() {
   }
 }
 async function doSave() {
+  if (state.drive) return doSaveDrive();
   if (!state.handle) return doSaveAs();
   const text = editor.getMarkdown();
   try {
     await writeHandle(state.handle, text);
     state.savedText = text;
     state.dirty = false;
+    markEditorSaved(text);
     clearDraft();
     renderTitle();
     setStatus("Saved");
@@ -45148,6 +46245,120 @@ function doDownload() {
   downloadText(state.name.match(/\.(md|markdown|mdown)$/i) ? state.name : state.name + ".md", text);
   setStatus("Downloaded");
 }
+function markEditorSaved(text) {
+  if (editor.markSaved && editor.getMarkdown() === text) editor.markSaved();
+}
+function afterDriveWrite(text, file) {
+  markEditorSaved(text);
+  state.savedText = text;
+  state.dirty = editor.getMarkdown() !== text;
+  if (file.name) state.name = file.name;
+  clearTimeout(draftTimer);
+  if (state.dirty) draftTimer = setTimeout(saveDraft, AUTOSAVE_MS);
+  else store.remove(draftKey());
+  renderTitle();
+  driveStatus.set("saved");
+}
+async function withDrive(fn) {
+  if (driveBusy) {
+    setStatus("A Drive operation is already in progress", 2500);
+    return;
+  }
+  driveBusy = true;
+  try {
+    return await fn();
+  } finally {
+    driveBusy = false;
+  }
+}
+async function doOpenDrive() {
+  if (state.dirty && !confirm("Discard unsaved changes?")) return;
+  await withDrive(async () => {
+    let doc2 = null;
+    const picked = await openDriveDialog({ api: driveApi, theme: state.theme, onPick: async (f) => {
+      doc2 = await driveApi.readFile(f.id);
+    } });
+    if (!picked || !doc2) return;
+    loadDoc({ handle: null, name: doc2.name, text: doc2.text }, { drive: { id: doc2.id, modifiedTime: doc2.modifiedTime, canEdit: doc2.canEdit } });
+  });
+}
+async function createOnDrive(defaultName) {
+  const text = editor.getMarkdown();
+  const target = await saveToDriveDialog({ api: driveApi, defaultName, theme: state.theme });
+  if (!target) return false;
+  driveStatus.set("saving");
+  try {
+    const r2 = await driveApi.createFile(target.name, text, { parentId: target.parentId });
+    const oldKey = draftKey();
+    state.drive = { id: r2.id, modifiedTime: r2.modifiedTime, canEdit: r2.canEdit !== false };
+    state.handle = null;
+    state.loaded = true;
+    store.remove(oldKey);
+    afterDriveWrite(text, r2);
+    return true;
+  } catch (e) {
+    reportDriveError(e);
+    return false;
+  }
+}
+function isDirtyNow() {
+  return editor.getMarkdown() !== state.savedText;
+}
+function reportDriveError(e) {
+  const { state: st, detail } = statusForError(e);
+  if (e && (e.code === "auth" || e.code === "auth-cancelled")) {
+    detail.action = { label: "Sign in", onClick: async () => {
+      try {
+        await driveApi.signIn();
+        doSaveDrive();
+      } catch (e2) {
+        reportDriveError(e2);
+      }
+    } };
+  }
+  driveStatus.set(st, detail);
+}
+async function doSaveDriveAs() {
+  return withDrive(() => createOnDrive(state.name));
+}
+async function doSaveDrive() {
+  if (!state.drive) return doSaveDriveAs();
+  if (state.drive.canEdit === false) {
+    return withDrive(() => createOnDrive("Copy of " + state.name));
+  }
+  if (!isDirtyNow()) {
+    setStatus("No changes to save", 2e3);
+    return;
+  }
+  await withDrive(async () => {
+    const text = editor.getMarkdown();
+    driveStatus.set("saving");
+    try {
+      const r2 = await driveApi.saveFile(state.drive.id, text, { expectedModifiedTime: state.drive.modifiedTime });
+      state.drive.modifiedTime = r2.modifiedTime;
+      afterDriveWrite(text, r2);
+    } catch (e) {
+      if (e.code !== "conflict") return reportDriveError(e);
+      driveStatus.set("conflict");
+      const choice = await confirmConflict({ name: state.name, remoteModifiedTime: e.remoteModifiedTime, theme: state.theme });
+      try {
+        if (choice === "overwrite") {
+          const r2 = await driveApi.saveFile(state.drive.id, text, { force: true });
+          state.drive.modifiedTime = r2.modifiedTime;
+          afterDriveWrite(text, r2);
+        } else if (choice === "reload") {
+          if (!confirm("Replace your edits with the version currently in Drive?")) return;
+          const d = await driveApi.readFile(state.drive.id);
+          loadDoc({ handle: null, name: d.name, text: d.text }, { drive: { id: d.id, modifiedTime: d.modifiedTime, canEdit: d.canEdit } });
+        } else if (choice === "save-copy") {
+          await createOnDrive("Copy of " + state.name);
+        }
+      } catch (e2) {
+        reportDriveError(e2);
+      }
+    }
+  });
+}
 function syncSourceUi() {
   state.source = !!(editor.isSourceMode ? editor.isSourceMode() : state.source);
 }
@@ -45157,6 +46368,7 @@ async function init() {
   state.theme = theme;
   editor = createEditor($2("editor-host"), { markdown: "", onChange, theme });
   applyTheme(theme);
+  driveStatus = createDriveStatus($2("drive-status"));
   const innerSrc = document.querySelector('.mdx-toolbar [data-cmd="source"]');
   if (innerSrc) new MutationObserver(syncSourceUi).observe(innerSrc, { attributes: true, attributeFilter: ["aria-pressed"] });
   const src = new URLSearchParams(location.search).get("src");
@@ -45178,6 +46390,7 @@ async function init() {
     state.name = draft.name || "Untitled.md";
     state.savedText = "";
     state.dirty = true;
+    state.drive = draft.drive || null;
     renderTitle();
     setStatus("Restored autosaved draft", 4e3);
   } else renderTitle();
@@ -45186,6 +46399,8 @@ $2("btn-open").onclick = doOpen;
 $2("btn-save").onclick = doSave;
 $2("btn-saveas").onclick = doSaveAs;
 $2("btn-download").onclick = doDownload;
+$2("btn-drive-open").onclick = doOpenDrive;
+$2("btn-drive-save").onclick = doSaveDrive;
 $2("btn-theme").onclick = () => applyTheme(state.theme === "dark" ? "light" : "dark");
 document.addEventListener("keydown", (e) => {
   if (!(e.ctrlKey || e.metaKey)) return;
@@ -45233,4 +46448,8 @@ addEventListener("beforeunload", (e) => {
 init();
 window.__mdwe = { state, get editor() {
   return editor;
+}, get driveApi() {
+  return driveApi;
+}, set driveApi(a) {
+  driveApi = a;
 } };

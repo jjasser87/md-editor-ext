@@ -119,6 +119,73 @@ for (const [name, md] of Object.entries({
   check('raw chips present', !!document.querySelector('.mdx-raw'));
 }
 
+// ---- Byte-exact unedited save (createEditor baseline: getMarkdown() === loaded text while doc unchanged) ----------
+const { register } = await import('node:module');
+register('data:text/javascript,' + encodeURIComponent(
+  "export async function load(url, ctx, next){ if (url.endsWith('.css')) return { format:'module', source:'export default \"\"', shortCircuit:true }; return next(url, ctx); }"));
+const { createEditor } = await import('./index.js');
+const tick = (ms) => new Promise((r) => setTimeout(r, ms));
+{
+  let bx = 0, editedCount = 0;
+  for (const f of files) {
+    const orig = readFileSync(join(dir, f), 'utf8');
+    const host = document.createElement('div'); document.body.appendChild(host);
+    let changes = 0;
+    const ed = createEditor(host, { markdown: orig, onChange: () => changes++ });
+    check(`byte-exact unedited (initial): ${f}`, ed.getMarkdown() === orig);
+    check(`isModified false after load: ${f}`, ed.isModified() === false);
+    // no-op interactions: selection, focus, source toggle both ways, theme
+    ed.tiptap.commands.selectAll(); ed.tiptap.commands.focus('start'); ed.setTheme('dark'); ed.focus();
+    ed.setSourceMode(true);
+    check(`source mode returns text verbatim: ${f}`, ed.getMarkdown() === orig);
+    ed.setSourceMode(false);
+    check(`byte-exact after source toggle w/o edits: ${f}`, ed.getMarkdown() === orig);
+    await tick(320);
+    check(`no onChange on no-ops: ${f}`, changes === 0, String(changes));
+    // setMarkdown resets the baseline
+    ed.setMarkdown('# other\n'); ed.setMarkdown(orig);
+    check(`byte-exact after setMarkdown: ${f}`, ed.getMarkdown() === orig);
+    // edit: append a word to the last text position -> differs, equals normalized serialization, fires onChange
+    const norm = normalizeMarkdownOutput(ed.tiptap.getMarkdown());
+    ed.tiptap.commands.setTextSelection(1);
+    ed.tiptap.commands.insertContent('X');
+    const edited = ed.getMarkdown();
+    check(`edited differs from original: ${f}`, edited !== orig);
+    check(`edited == normalized serialization: ${f}`, edited === normalizeMarkdownOutput(ed.tiptap.getMarkdown()));
+    check(`isModified true after edit: ${f}`, ed.isModified() === true);
+    await tick(320);
+    check(`onChange fired on edit: ${f}`, changes === 1, String(changes));
+    // undo back to the original doc -> original bytes again
+    ed.tiptap.commands.undo();
+    check(`undo -> original bytes: ${f}`, ed.getMarkdown() === orig, JSON.stringify(ed.getMarkdown().slice(0, 60)));
+    check(`undo -> isModified false: ${f}`, ed.isModified() === false);
+    // edit again, markSaved: baseline moves to serialized output; further unedited reads are stable and not modified
+    ed.tiptap.commands.insertContent('Y');
+    const saved = ed.markSaved();
+    check(`markSaved returns current output: ${f}`, saved === ed.getMarkdown());
+    check(`isModified false after markSaved: ${f}`, ed.isModified() === false);
+    ed.setSourceMode(true); ed.setSourceMode(false);
+    check(`stable after markSaved+source toggle: ${f}`, ed.getMarkdown() === saved);
+    if (ed.getMarkdown() === orig) bx++; else editedCount++;
+    // source-mode edit: baseline becomes the exact source text
+    ed.setSourceMode(true);
+    const srcEl = host.querySelector('textarea.mdx-source');
+    const custom = '* a\n*  b\n\nSetext\n======\n';
+    srcEl.value = custom; srcEl.dispatchEvent(new dom.window.Event('input'));
+    check(`source edit: isModified true: ${f}`, ed.isModified() === true);
+    ed.setSourceMode(false);
+    check(`source edit -> WYSIWYG unedited returns source text verbatim: ${f}`, ed.getMarkdown() === custom, JSON.stringify(ed.getMarkdown()));
+    ed.destroy(); host.remove();
+  }
+  // API misc
+  const host = document.createElement('div'); document.body.appendChild(host);
+  const ed = createEditor(host, { markdown: '' });
+  check('empty doc round-trips as empty', ed.getMarkdown() === '' && !ed.isModified());
+  ed.setMarkdown('a  \nb\n===\n\n* x\n'); check('setMarkdown verbatim', ed.getMarkdown() === 'a  \nb\n===\n\n* x\n');
+  ed.destroy(); host.remove();
+  console.log(`\nbyte-exact unedited check ran on ${files.length} fixtures`);
+}
+
 console.log(`\n${asserts} explicit assertions`);
 console.log(`\n${files.length} docs: ${exact} exact, ${normalized} normalized (stable), ${failed} failed/unstable`);
 editor.destroy();

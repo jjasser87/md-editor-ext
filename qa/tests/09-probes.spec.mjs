@@ -88,11 +88,19 @@ test('large document (2000 paragraphs + 200-row table): load + type latency', as
   expect(tLoad).toBeLessThan(15000);
 });
 
-test('unicode / emoji / CRLF input survives; CRLF normalized', async ({ ext }) => {
+test('unicode / emoji / CRLF input survives; unedited CRLF doc round-trips verbatim, an edited one is normalized', async ({ ext }) => {
   const { page } = await openEditor(ext);
-  await setMd(page, '# Ünïcödé 日本語 🎉\r\n\r\nline\r\n\r\n- é\r\n');
+  const src = '# Ünïcödé 日本語 🎉\r\n\r\nline\r\n\r\n- é\r\n';
+  await setMd(page, src);
+  // Exact-original semantics (Editor Dev): an unedited doc is returned byte-for-byte, including CRLF.
+  expect(await md(page)).toBe(src);
+  expect(await page.evaluate(() => window.__mdwe.editor.isModified())).toBe(false);
+  // After a real edit the output is the canonical serialization (LF only); unicode intact. Report the behaviour.
+  await page.locator('.ProseMirror li').last().click(); await page.keyboard.press('End'); await page.keyboard.type('X');
   const out = await md(page);
-  expect(out).toBe('# Ünïcödé 日本語 🎉\n\nline\n\n- é\n');
+  console.log('CRLF doc after one edit -> getMarkdown JSON:', JSON.stringify(out), ' isModified =', await page.evaluate(() => window.__mdwe.editor.isModified()));
+  expect(out.includes('\r'), 'edited doc normalized to LF (report)').toBe(false);
+  expect(out).toContain('# Ünïcödé 日本語 🎉\n\nline\n\n- éX');
 });
 
 test('Ctrl+S when not focused in editor (focus on toolbar button) still handled and default prevented', async ({ ext }) => {

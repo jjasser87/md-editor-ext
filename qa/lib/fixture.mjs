@@ -8,20 +8,39 @@ export const EXT = path.join(ROOT, 'extension');
 export const SCREENS = path.join(ROOT, 'qa', 'screens');
 export { expect };
 
-export async function launch({ allowFileUrls = false } = {}) {
+// Test-only copy of extension/ whose manifest oauth2.client_id is NOT the YOUR_CLIENT_ID placeholder (api.js short-circuits
+// placeholder ids with 'not-configured' before calling chrome.identity, so tests that mock a token need a non-placeholder id).
+// extension/ itself is never modified.
+export function makeExtCopy(clientId = 'qa-test-client.apps.googleusercontent.com') {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'mdwe-extcopy-'));
+  fs.cpSync(EXT, d, { recursive: true });
+  const mp = path.join(d, 'manifest.json'); const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  m.oauth2.client_id = clientId; fs.writeFileSync(mp, JSON.stringify(m, null, 2));
+  return d;
+}
+export async function launch({ allowFileUrls = false, placeholder = false } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mdwe-pw-'));
-  const args = [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`];
+  const extDir = placeholder ? EXT : makeExtCopy();
+  const args = [`--disable-extensions-except=${extDir}`, `--load-extension=${extDir}`];
   // NOTE: headless (new) via Playwright's chromium channel. No xvfb needed.
   const ctx = await chromium.launchPersistentContext(dir, { channel: 'chromium', headless: true, args, acceptDownloads: true, viewport: { width: 1200, height: 800 } });
   let sw = ctx.serviceWorkers()[0];
   if (!sw) sw = await ctx.waitForEvent('serviceworker', { timeout: 15000 });
   const extId = new URL(sw.url()).host;
-  return { ctx, sw, extId, dir };
+  return { ctx, sw, extId, dir, extDir };
 }
 
 export const test = base.extend({
   ext: async ({}, use) => {
     const e = await launch();
+    await use(e);
+    await e.ctx.close();
+    fs.rmSync(e.dir, { recursive: true, force: true });
+    if (e.extDir !== EXT) fs.rmSync(e.extDir, { recursive: true, force: true });
+  },
+  // The extension exactly as shipped (placeholder client id) - only for tests about the placeholder/not-configured state.
+  extReal: async ({}, use) => {
+    const e = await launch({ placeholder: true });
     await use(e);
     await e.ctx.close();
     fs.rmSync(e.dir, { recursive: true, force: true });
@@ -42,7 +61,13 @@ export async function openEditor(ext, { query = '', init, arg, after } = {}) {
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console.error: ' + m.text()); });
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
-  page.on('requestfailed', (r) => errors.push('requestfailed: ' + r.url()));
+  // External http(s) loads (e.g. https://example.com/a.png in fixtures) fail on a box without network: tolerate pure network errors.
+  const netNoise = [];
+  page.on('requestfailed', (r) => {
+    const why = (r.failure() && r.failure().errorText) || '';
+    if (/^https?:/.test(r.url()) && /ERR_NAME_NOT_RESOLVED|ERR_INTERNET_DISCONNECTED|ERR_NETWORK_CHANGED|ERR_ADDRESS_UNREACHABLE|ERR_BLOCKED_BY_ORB|ERR_BLOCKED_BY_CLIENT|ERR_CONNECTION_(REFUSED|RESET|CLOSED|TIMED_OUT)|ERR_TIMED_OUT|ERR_PROXY/.test(why)) { netNoise.push(r.url() + ' ' + why); return; }
+    errors.push('requestfailed: ' + r.url() + (why ? ' (' + why + ')' : ''));
+  });
   const dialogs = [];
   page.on('dialog', (d) => { dialogs.push(d.type() + ': ' + d.message()); d.accept(); });
   if (init) await page.addInitScript(init, arg);
@@ -50,7 +75,7 @@ export async function openEditor(ext, { query = '', init, arg, after } = {}) {
   const url = `chrome-extension://${ext.extId}/editor/index.html${query}`;
   await page.goto(url);
   await page.waitForFunction(() => window.__mdwe && window.__mdwe.editor);
-  return { page, errors, dialogs, url, extId: ext.extId, ctx: ext.ctx, sw: ext.sw };
+  return { page, errors, netNoise, dialogs, url, extId: ext.extId, ctx: ext.ctx, sw: ext.sw };
 }
 
 // In-memory File System Access stub (installed via init script). Exposes window.__fsa.

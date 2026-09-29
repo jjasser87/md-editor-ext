@@ -1,0 +1,12 @@
+/* demo page only: same variables as src/page/page.css */
+:root { --bar-bg:#f3f4f6; --bar-fg:#111827; --bar-border:#d1d5db; --btn-bg:#fff; --accent:#2563eb; }
+:root[data-theme="dark"] { --bar-bg:#1f2937; --bar-fg:#f3f4f6; --bar-border:#374151; --btn-bg:#111827; --accent:#60a5fa; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--bar-bg); color: var(--bar-fg); min-height: 100vh; }
+#filebar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 12px; border-bottom:1px solid var(--bar-border); }
+#filebar .group { display:flex; gap:6px; }
+button, input { font: inherit; }
+#filebar button, main button { padding:5px 10px; border:1px solid var(--bar-border); background:var(--btn-bg); color:var(--bar-fg); border-radius:6px; cursor:pointer; }
+main { padding: 16px; }
+input { padding: 5px 8px; border:1px solid var(--bar-border); background:var(--btn-bg); color:var(--bar-fg); border-radius:6px; }
+#result { font-size: 12px; opacity: .8; max-width: 40ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -10,10 +10,13 @@ Underline is disabled (no markdown form). Link comes from StarterKit (openOnClic
 import { createEditor } from './editor/index.js';   // also imports ./editor.css (Vite extracts it)
 const ed = createEditor(containerEl, { markdown = '', onChange, onWarnings, theme = 'light' });
 ed.getMarkdown(); ed.setMarkdown(md); ed.setTheme('light'|'dark'); ed.focus();
-ed.getWarnings(); ed.setSourceMode(bool); ed.isSourceMode(); ed.destroy(); ed.tiptap /* raw TipTap Editor, for tests */
+ed.isModified(); ed.markSaved(); ed.getWarnings(); ed.setSourceMode(bool); ed.isSourceMode(); ed.destroy(); ed.tiptap /* raw TipTap Editor, for tests */
 ```
 - `onChange(markdown)` is debounced (250 ms) and fires ONLY on user edits (typing, toolbar, source textarea). Not on `setMarkdown`/`setTheme`; `setMarkdown` also cancels a pending onChange.
-- `getMarkdown()` is always current (in source mode returns the textarea text; no debounce).
+- `getMarkdown()` is always current (in source mode returns the textarea text verbatim; no debounce).
+- **Byte-exact unedited save (2026-09-29):** the editor keeps a baseline `{baseMd, baseDoc}` = the exact text last parsed (initial `markdown`, `setMarkdown`, source->WYSIWYG re-parse, `markSaved`) and the ProseMirror doc it produced. `getMarkdown()` in WYSIWYG mode returns `baseMd` verbatim while `editor.state.doc.eq(baseDoc)`; otherwise it serializes the whole doc (normalized, as before). Undo back to the baseline doc therefore returns the original bytes again. Selection/focus/theme/source-toggle without edits change neither `getMarkdown()` nor fire `onChange`. Loading content is not an undo step (`addToHistory:false`), so Ctrl+Z cannot blank a freshly opened file.
+- `isModified()` (additive): `getMarkdown() !== <text of last setMarkdown/markSaved/initial load>`. `markSaved()` (additive): sets that saved-text and the doc baseline to the current `getMarkdown()` output and returns it, so a later unedited `getMarkdown()` is byte-exact w.r.t. what was saved (callers can skip the save when `!isModified()`). Called in source mode it records the textarea text; the doc baseline is set when leaving source mode.
+- Source mode: on entering, textarea = `getMarkdown()` (original bytes if unedited). Leaving re-parses only if the text differs; the baseline becomes exactly that source text.
 - Source mode: plain textarea; switching back re-parses only if the text was changed. Toolbar is disabled in source mode.
 - Theme: `data-theme` on `.mdx-root`; all colors are CSS variables (`--mdx-*`) in `editor.css`.
 - Ctrl+K opens the in-page link input (no window.prompt). Image = URL input popover.
@@ -48,9 +51,10 @@ ed.getWarnings(); ed.setSourceMode(bool); ed.isSourceMode(); ed.destroy(); ed.ti
 - Loose lists: blank line between items is lost; a second paragraph inside a list item gets a whitespace-only line.
 - Fenced code inside a list item loses the blank line after the item.
 - Hard break = two trailing spaces (kept).
-- main.js already uses normalized output as the dirty baseline.
+- main.js compares `getMarkdown()` with its `savedText`; with the byte-exact baseline an unedited doc equals the original text, so it is not dirty.
 
 ## Known issues
+- **Whole-file normalization on first edit:** the byte-exact guarantee only holds while the document is unchanged. As soon as the user edits anything, the *entire* file is re-serialized (table padding, setext->ATX, reference links inlined, bullet markers, loose/tight lists, indented->fenced code, etc. — see "Known normalizations"), not just the edited part. Per-block source-range preservation is not implemented.
 - Adjacent bullet lists with different markers (`*` then `+`) merge into one list.
 - Raw HTML: preserved verbatim but shown as read-only chips (not rendered, not editable in WYSIWYG; edit in Source mode). Markdown *inside* an HTML block that has no blank-line separation (e.g. `<details>` + text on adjacent lines) is part of the raw chip; when blank-line separated, the inner markdown is parsed normally and the open/close tags are separate chips. HTML inside a list item/blockquote is preserved but re-indented with the container's normal prefix only (blank lines inside a blockquote raw block may gain a `>` line). `<em>/<b>/<strong>/<i>/<s>/<del>/<code>` inline HTML is still converted to Markdown marks (warning `html-converted`).
 - Footnotes are literal chips (no popup/numbering); a definition must start at column 0 (`[^id]: text`, continuation lines indented 4+ spaces). Reference-style links are inlined (warning `reference-links`).
@@ -71,3 +75,6 @@ ed.getWarnings(); ed.setSourceMode(bool); ed.isSourceMode(); ed.destroy(); ed.ti
 
 ## Integration (Extension Dev)
 None required: `src/page/main.js` already imports `createEditor`; Vite picks up the CSS import. `#editor-host` is a flex child with definite height (fine).
+
+## Test results (byte-exact baseline)
+- roundtrip: 13 docs (4 exact, 8 normalized-stable, 0 failed; 1 known issue) + 265 assertions, incl. per fixture through `createEditor` in jsdom: unedited == original bytes (initial, after setMarkdown, after source toggle, source mode text), no onChange on no-ops, edit -> differs and equals normalized serialization + onChange fires + isModified, undo -> original bytes, markSaved, source-edit baseline. (Test registers a tiny node loader hook to stub `.css` imports.)

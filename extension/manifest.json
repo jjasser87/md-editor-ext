@@ -3,13 +3,52 @@
   "name": "Markdown WYSIWYG Editor",
   "version": "0.1.0",
   "description": "Open, edit and save Markdown files in a WYSIWYG editor.",
-  "action": { "default_title": "Open Markdown Editor", "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" } },
-  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
-  "background": { "service_worker": "background.js" },
-  "permissions": ["storage"],
+  "action": {
+    "default_title": "Open Markdown Editor",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "identity"
+  ],
   "content_scripts": [
-    { "matches": ["file:///*.md", "file:///*.markdown"], "js": ["content.js"], "run_at": "document_idle" }
+    {
+      "matches": [
+        "file:///*.md",
+        "file:///*.markdown"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
   ],
   "web_accessible_resources": [],
-  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'self'" }
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAi43+pNEYGLLsipF6NdHEmw0mvJaUF9DOXzJ2nfuIIVSZ30vvwqLWktKU+rM+2+jj3y768FQpyIStxYNvsDRdoJdmLZ+MCSg1MgPaqeXZJhdxhUOkoZ7vX1Dzq12oCFZ+NNTqi86ecaJys5YUd+PUbTHenQqEhnPPRdeR+tF1vXOMruZ6TYpf/yBX7zr0k/NdkDE16AeRn+X3H821mAveHNEaYKOmRafZz18b9RK/cdJsF5zCZ8MvA85tKcdGfJ6WZpxkss7vBCogLZVNyzWlKfBXOsGxeT9GnWWxzEx9VKrDeUGzGiZh/47Wung+DUfKaM6JWznV4OmTPm6TognXGwIDAQAB",
+  "host_permissions": [
+    "https://www.googleapis.com/*"
+  ],
+  "oauth2": {
+    "client_id": "106687120170-evkr9vhr2knjvlruijg23vc2bdmvk5ml.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive"
+    ]
+  }
 }

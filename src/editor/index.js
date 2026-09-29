@@ -26,7 +26,17 @@ export function createEditor(containerEl, { markdown = '', onChange, onWarnings,
   let timer = null;
   let destroyed = false;
 
-  const wysMarkdown = () => normalizeMarkdownOutput(editor.getMarkdown());
+  // Byte-exact baseline: the markdown text last loaded (setMarkdown / initial / source->WYSIWYG re-parse / markSaved)
+  // and the ProseMirror doc it produced. While the doc is unchanged, getMarkdown() returns the text verbatim, so an
+  // unedited open+save never rewrites the user's file. Once edited, the whole doc is serialized (normalized).
+  let baseMd = markdown == null ? '' : String(markdown);
+  let baseDoc = null;
+  // Text considered "saved" by the host (last setMarkdown / markSaved); isModified() compares against it.
+  let savedMd = baseMd;
+
+  const serialize = () => normalizeMarkdownOutput(editor.getMarkdown());
+  const docUnchanged = () => baseDoc !== null && editor.state.doc.eq(baseDoc);
+  const wysMarkdown = () => (docUnchanged() ? baseMd : serialize());
   const getMarkdown = () => (sourceMode ? src.value : wysMarkdown());
 
   function schedule() {
@@ -36,8 +46,10 @@ export function createEditor(containerEl, { markdown = '', onChange, onWarnings,
   let warnings = [];
   function loadIntoEditor(md) {
     silent = true;
-    try { editor.commands.setContent(md || '', { contentType: 'markdown', emitUpdate: false }); }
+    // addToHistory:false -> loading is not an undo step (Ctrl+Z can't blank the freshly opened file)
+    try { editor.chain().setMeta('addToHistory', false).setContent(md || '', { contentType: 'markdown', emitUpdate: false }).run(); }
     finally { silent = false; }
+    baseMd = md || ''; baseDoc = editor.state.doc;
     try { warnings = detectWarnings(editor.markdown, md || ''); } catch { warnings = []; }
     if (onWarnings) { try { onWarnings(warnings.slice()); } catch { /* host callback errors must not break loading */ } }
   }
@@ -75,7 +87,20 @@ export function createEditor(containerEl, { markdown = '', onChange, onWarnings,
     if (sourceMode) src.value = md; // WYSIWYG reloaded when leaving source mode
     else loadIntoEditor(md);
     if (sourceMode) loadIntoEditor(md); // keep both in sync
+    savedMd = md;
     clearTimeout(timer); timer = null; // programmatic change: no onChange
+  }
+  /** True when the current content differs from the last loaded/saved text (setMarkdown / markSaved). */
+  function isModified() {
+    return getMarkdown() !== savedMd;
+  }
+  /** Reset the baseline to the current content: afterwards an unedited getMarkdown() is byte-exact w.r.t. what was saved. */
+  function markSaved() {
+    const md = getMarkdown();
+    savedMd = md;
+    // In source mode the text is re-parsed (and the doc baseline set) when leaving source mode.
+    if (!sourceMode) { baseMd = md; baseDoc = editor.state.doc; }
+    return md;
   }
   function setSourceMode(on) {
     on = !!on;
@@ -101,6 +126,8 @@ export function createEditor(containerEl, { markdown = '', onChange, onWarnings,
   return {
     getMarkdown,
     setMarkdown,
+    isModified,
+    markSaved,
     /** Non-blocking notices about constructs of the last loaded document that are NOT preserved verbatim: [{code, message}]. */
     getWarnings: () => warnings.slice(),
     setTheme(t) { root.dataset.theme = t === 'dark' ? 'dark' : 'light'; },

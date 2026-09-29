@@ -144,8 +144,12 @@ test('source toggle: shows markdown, edits round-trip back into WYSIWYG', async 
   await btn.click();
   await expect(page.locator('.mdx-wysiwyg')).toBeVisible();
   await expect(page.locator('.ProseMirror ul li')).toHaveText('added');
-  expect(await md(page)).toBe('# T\n\n**b** text\n\n- added\n');
+  // Exact-original semantics (Editor Dev): text handed over from source mode comes back VERBATIM (no forced trailing \n) until the user edits in WYSIWYG.
+  expect(await md(page)).toBe('# T\n\n**b** text\n\n- added');
   await expect(btn).toHaveAttribute('aria-pressed', 'false');
+  // ...and once edited in WYSIWYG the output is the canonical serialization again (trailing newline).
+  await page.locator('.ProseMirror ul li').click(); await page.keyboard.press('End'); await page.keyboard.type('!');
+  expect(await md(page)).toBe('# T\n\n**b** text\n\n- added!\n');
 });
 
 test('[BUG-7] single source toggle (top-bar #btn-source removed); state.source follows editor', async ({ editor: { page } }) => {

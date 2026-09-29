@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Drive UI demo</title>
+  <link rel="stylesheet" href="./demo.css">
+</head>
+<body>
+  <header id="filebar">
+    <div class="group">
+      <button id="btn-open" type="button">Open from Drive</button>
+      <button id="btn-save" type="button">Save to Drive…</button>
+      <button id="btn-conflict" type="button">Conflict…</button>
+      <button id="btn-theme" type="button">Theme</button>
+    </div>
+    <div id="drive-status-host"></div>
+    <div id="result" aria-live="polite">—</div>
+  </header>
+  <main>
+    <p>Query string: <code>?mode=normal|slow|error|401|403|auth|notconfigured|offline|empty|many|nofolders|signedout</code> and <code>&amp;theme=dark</code>.</p>
+    <p><button id="btn-states" type="button">Cycle status badge</button> <input id="probe" placeholder="page input (must be inert while modal open)"></p>
+  </main>
+  <script type="module" src="./demo.js"></script>
+</body>
+</html>
