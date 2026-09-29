@@ -68,7 +68,7 @@ export function classifyError(e) {
   if (code === 'auth-cancelled') return { kind: 'signedout', title: 'Sign-in cancelled', message: 'Sign-in was cancelled. Sign in with Google to continue.' };
   if (code === 'auth' || code === 401 || status === 401) return { kind: 'signedout', title: 'Sign in required', message: 'Sign in with Google to access your Drive files.' };
   if (code === 'offline') return { kind: 'offline', title: 'You\u2019re offline', message: 'Couldn\u2019t reach Google Drive. Check your connection and try again.' };
-  if (code === 'forbidden' || code === 403 || status === 403) return { kind: 'forbidden', title: 'Permission denied', message: 'Google Drive denied access. Make sure you granted this extension permission to view your Drive files, or sign out and sign in again.' };
+  if (code === 'forbidden' || code === 403 || status === 403) return { kind: 'forbidden', title: 'Permission denied', message: 'Google Drive denied access. Make sure you granted this extension permission to view your Drive files, or sign out and sign in again.' + (e && e.message && e.message !== 'Forbidden' ? ' Google says: ' + e.message + (e.reason ? ' (' + e.reason + ')' : '') : '') };
   if (code === 'quota') return { kind: 'quota', title: 'Too many requests', message: 'Google Drive rate limit reached. Wait a moment, then retry.' };
   if (code === 'not-found' || code === 404 || status === 404) return { kind: 'notfound', title: 'Not found', message: 'That item was not found (it may have been deleted, moved, or you lost access).' };
   return { kind: 'error', title: 'Something went wrong', message: msg };

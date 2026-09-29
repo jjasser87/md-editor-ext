@@ -45126,7 +45126,10 @@ function createDriveApi({ identity = globalThis.chrome && chrome.identity, fetch
     if (res.status === 404) throw new DriveError("not-found", "File not found (deleted, moved, or no access)", { status: 404 });
     if (res.status === 429) throw new DriveError("quota", "Google Drive rate limit hit. Try again shortly.", { status: 429 });
     if (res.status === 403 && /rateLimit|quota|userRateLimit/i.test(reason || "")) throw new DriveError("quota", "Google Drive rate limit hit. Try again shortly.", { status: 403 });
-    if (res.status === 403) throw new DriveError("forbidden", message, { status: 403, reason });
+    if (res.status === 403) {
+      if (/insufficientPermissions|insufficientScopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(reason + " " + message)) await dropToken(t);
+      throw new DriveError("forbidden", message, { status: 403, reason });
+    }
     throw new DriveError("http", message, { status: res.status });
   }
   const json2 = async (url, init2) => (await request(url, init2)).json();
@@ -45141,10 +45144,11 @@ function createDriveApi({ identity = globalThis.chrome && chrome.identity, fetch
       }
     },
     async signIn() {
-      cachedToken = null;
+      await dropToken();
       cachedToken = await getTokenRaw(true);
       return true;
     },
+    // drop Chrome's cached token first so a re-sign-in really re-consents
     async signOut() {
       const t = cachedToken || await getTokenRaw(false).catch(() => null);
       if (t) {
@@ -45304,7 +45308,7 @@ function classifyError(e) {
   if (code === "auth-cancelled") return { kind: "signedout", title: "Sign-in cancelled", message: "Sign-in was cancelled. Sign in with Google to continue." };
   if (code === "auth" || code === 401 || status === 401) return { kind: "signedout", title: "Sign in required", message: "Sign in with Google to access your Drive files." };
   if (code === "offline") return { kind: "offline", title: "You’re offline", message: "Couldn’t reach Google Drive. Check your connection and try again." };
-  if (code === "forbidden" || code === 403 || status === 403) return { kind: "forbidden", title: "Permission denied", message: "Google Drive denied access. Make sure you granted this extension permission to view your Drive files, or sign out and sign in again." };
+  if (code === "forbidden" || code === 403 || status === 403) return { kind: "forbidden", title: "Permission denied", message: "Google Drive denied access. Make sure you granted this extension permission to view your Drive files, or sign out and sign in again." + (e && e.message && e.message !== "Forbidden" ? " Google says: " + e.message + (e.reason ? " (" + e.reason + ")" : "") : "") };
   if (code === "quota") return { kind: "quota", title: "Too many requests", message: "Google Drive rate limit reached. Wait a moment, then retry." };
   if (code === "not-found" || code === 404 || status === 404) return { kind: "notfound", title: "Not found", message: "That item was not found (it may have been deleted, moved, or you lost access)." };
   return { kind: "error", title: "Something went wrong", message: msg };

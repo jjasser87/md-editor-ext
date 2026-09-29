@@ -59,7 +59,10 @@ export function createDriveApi({ identity = globalThis.chrome && chrome.identity
     if (res.status === 404) throw new DriveError('not-found', 'File not found (deleted, moved, or no access)', { status: 404 });
     if (res.status === 429) throw new DriveError('quota', 'Google Drive rate limit hit. Try again shortly.', { status: 429 });
     if (res.status === 403 && /rateLimit|quota|userRateLimit/i.test(reason || '')) throw new DriveError('quota', 'Google Drive rate limit hit. Try again shortly.', { status: 403 });
-    if (res.status === 403) throw new DriveError('forbidden', message, { status: 403, reason });
+    if (res.status === 403) {
+      if (/insufficientPermissions|insufficientScopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(reason + ' ' + message)) await dropToken(t); // stale token without the Drive scope: force a fresh consent on next sign-in
+      throw new DriveError('forbidden', message, { status: 403, reason });
+    }
     throw new DriveError('http', message, { status: res.status });
   }
   const json = async (url, init) => (await request(url, init)).json();
@@ -68,7 +71,7 @@ export function createDriveApi({ identity = globalThis.chrome && chrome.identity
 
   const api = {
     async isSignedIn() { try { await token(false); return true; } catch { return false; } },
-    async signIn() { cachedToken = null; cachedToken = await getTokenRaw(true); return true; },
+    async signIn() { await dropToken(); cachedToken = await getTokenRaw(true); return true; }, // drop Chrome's cached token first so a re-sign-in really re-consents
     async signOut() {
       const t = cachedToken || await getTokenRaw(false).catch(() => null);
       if (t) { try { await f('https://oauth2.googleapis.com/revoke?token=' + encodeURIComponent(t), { method: 'POST' }); } catch { /* best effort */ } }
