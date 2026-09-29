@@ -7,12 +7,20 @@ import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { createLowlight, common } from 'lowlight';
+import { MermaidBlock, MathInline, MathBlock, mermaidFromToken } from './mermaid-math.js';
 
 export const lowlight = createLowlight(common);
 
 // --- Fixes for @tiptap/markdown serializer edge cases -------------------------------------------
 // 1) Fenced code: use a fence longer than any backtick run inside the code (else ``` in code breaks the doc).
 const SafeCodeBlock = CodeBlockLowlight.extend({
+  // fenced ```mermaid blocks become mermaidBlock nodes (verbatim source + original fence); everything else is a normal code block
+  parseMarkdown: (token, h) => {
+    const mm = mermaidFromToken(token);
+    if (mm) return h.createNode('mermaidBlock', mm);
+    if (token.raw && !token.raw.startsWith('```') && !token.raw.startsWith('~~~') && token.codeBlockStyle !== 'indented') return [];
+    return h.createNode('codeBlock', { language: token.lang || null }, token.text ? [h.createTextNode(token.text)] : []);
+  },
   renderMarkdown: (node, h) => {
     const lang = (node.attrs && node.attrs.language) || '';
     const body = node.content ? h.renderChildren(node.content) : '';
@@ -71,6 +79,7 @@ export function getExtensions({ placeholder = 'Start writing…', withPlaceholde
     TaskList,
     TaskItem.configure({ nested: true, HTMLAttributes: { 'data-type': 'taskItem' } }),
     Image.configure({ inline: false, allowBase64: true }),
+    MermaidBlock, MathInline, MathBlock,
     RawBlock, RawInline, RawHtmlBlockParser, // verbatim raw HTML / footnotes / front matter (read-only chips)
     MarkdownFixed.configure({ markedOptions: { gfm: true, breaks: false } }),
   ];

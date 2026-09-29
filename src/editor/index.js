@@ -3,6 +3,8 @@ import { Editor } from '@tiptap/core';
 import { getExtensions, normalizeMarkdownOutput } from './extensions.js';
 import { detectWarnings } from './markdown-fixes.js';
 import { createToolbar } from './toolbar.js';
+import { flushEdits, refreshTheme } from './mermaid-math.js';
+import 'katex/dist/katex.min.css'; // bundled locally by Vite (fonts emitted next to the CSS, relative url())
 import './editor.css';
 
 const DEBOUNCE_MS = 250;
@@ -34,10 +36,17 @@ export function createEditor(containerEl, { markdown = '', onChange, onWarnings,
   // Text considered "saved" by the host (last setMarkdown / markSaved); isModified() compares against it.
   let savedMd = baseMd;
 
-  const serialize = () => normalizeMarkdownOutput(editor.getMarkdown());
-  const docUnchanged = () => baseDoc !== null && editor.state.doc.eq(baseDoc);
+  // Node views (mermaid/math) commit their debounced source edits before we look at the doc.
+  const serialize = () => { flushEdits(editor); return normalizeMarkdownOutput(editor.getMarkdown()); };
+  const docUnchanged = () => { flushEdits(editor); return baseDoc !== null && editor.state.doc.eq(baseDoc); };
   const wysMarkdown = () => (docUnchanged() ? baseMd : serialize());
-  const getMarkdown = () => (sourceMode ? src.value : wysMarkdown());
+  // Whole-document Source view (BUG-28): a <textarea> cannot hold CR, so an unedited CRLF file would come back as LF.
+  // Remember the exact text shown and its textarea-normalized form; while the textarea still equals the latter,
+  // getMarkdown() returns the exact original bytes.
+  let srcExact = '', srcNorm = '';
+  const setSrc = (text) => { srcExact = text; src.value = text; srcNorm = src.value; };
+  const srcText = () => (src.value === srcNorm ? srcExact : src.value);
+  const getMarkdown = () => (sourceMode ? srcText() : wysMarkdown());
 
   function schedule() {
     clearTimeout(timer);
@@ -76,6 +85,7 @@ export function createEditor(containerEl, { markdown = '', onChange, onWarnings,
     }
   });
   const onKey = (e) => {
+    if (e.target && e.target.closest && e.target.closest('.mdx-node')) return; // per-block source fields own their keys
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'k' && !sourceMode) {
       e.preventDefault(); toolbar.openLink();
     }
@@ -84,7 +94,7 @@ export function createEditor(containerEl, { markdown = '', onChange, onWarnings,
 
   function setMarkdown(md) {
     md = md == null ? '' : String(md);
-    if (sourceMode) src.value = md; // WYSIWYG reloaded when leaving source mode
+    if (sourceMode) setSrc(md); // WYSIWYG reloaded when leaving source mode
     else loadIntoEditor(md);
     if (sourceMode) loadIntoEditor(md); // keep both in sync
     savedMd = md;
@@ -106,13 +116,13 @@ export function createEditor(containerEl, { markdown = '', onChange, onWarnings,
     on = !!on;
     if (on === sourceMode) return;
     if (on) {
-      src.value = wysMarkdown();
+      setSrc(wysMarkdown());
       sourceMode = true;
       wys.hidden = true; src.hidden = false;
       root.classList.add('mdx-source-mode');
       src.focus();
     } else {
-      const text = src.value;
+      const text = srcText();
       // Only rebuild the doc if the text was actually edited, to avoid gratuitous normalization.
       if (text !== wysMarkdown()) loadIntoEditor(text);
       sourceMode = false;
@@ -130,7 +140,7 @@ export function createEditor(containerEl, { markdown = '', onChange, onWarnings,
     markSaved,
     /** Non-blocking notices about constructs of the last loaded document that are NOT preserved verbatim: [{code, message}]. */
     getWarnings: () => warnings.slice(),
-    setTheme(t) { root.dataset.theme = t === 'dark' ? 'dark' : 'light'; },
+    setTheme(t) { root.dataset.theme = t === 'dark' ? 'dark' : 'light'; refreshTheme(editor); }, // diagrams re-render with the matching mermaid theme
     focus() { sourceMode ? src.focus() : editor.commands.focus(); },
     setSourceMode,
     isSourceMode: () => sourceMode,

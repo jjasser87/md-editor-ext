@@ -20,7 +20,10 @@ export function makeExtCopy(clientId = 'qa-test-client.apps.googleusercontent.co
 }
 export async function launch({ allowFileUrls = false, placeholder = false } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mdwe-pw-'));
-  const extDir = placeholder ? EXT : makeExtCopy();
+  // placeholder=true: the manifest as shipped IF it still has the YOUR_CLIENT_ID placeholder; the shipped manifest now carries a real-looking client id
+  // (Dev, 14:28), so a copy with the placeholder is used to keep testing the not-configured path.
+  const shippedIsPlaceholder = /^YOUR_CLIENT_ID/.test(JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'utf8')).oauth2?.client_id || '');
+  const extDir = placeholder ? (shippedIsPlaceholder ? EXT : makeExtCopy('YOUR_CLIENT_ID.apps.googleusercontent.com')) : makeExtCopy();
   const args = [`--disable-extensions-except=${extDir}`, `--load-extension=${extDir}`];
   // NOTE: headless (new) via Playwright's chromium channel. No xvfb needed.
   const ctx = await chromium.launchPersistentContext(dir, { channel: 'chromium', headless: true, args, acceptDownloads: true, viewport: { width: 1200, height: 800 } });
@@ -44,6 +47,7 @@ export const test = base.extend({
     await use(e);
     await e.ctx.close();
     fs.rmSync(e.dir, { recursive: true, force: true });
+    if (e.extDir !== EXT) fs.rmSync(e.extDir, { recursive: true, force: true });
   },
   // Opens the editor page, collecting console errors / page errors.
   editor: async ({ ext }, use) => {

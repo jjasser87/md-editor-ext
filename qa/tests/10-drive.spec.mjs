@@ -1115,7 +1115,7 @@ test.describe('Exact-original / unedited save probes (18 docs) + placeholder cli
     '---\ntitle: Front matter\ntags: [a, b]\n---\n\n# Doc\n\nBody\n',
     '# Refs\n\nSee [the site][ref] and <https://example.com>.\n\n[ref]: https://example.com "Title"\n',
   ];
-  const docs = () => fs.readdirSync(FIX).filter((f) => f.endsWith('.md')).sort().map((f) => [f, fx(f)]).concat(SPECIAL.map((t, i) => ['special-' + (i + 1) + '.md', t]));
+  const docs = () => fs.readdirSync(FIX).filter((f) => f.endsWith('.md') && !/^(1[3-9]|20)-(mermaid|math|dollar)|known-math/.test(f)).sort().map((f) => [f, fx(f)]).concat(SPECIAL.map((t, i) => ['special-' + (i + 1) + '.md', t]));
 
   test('[REPORT] byte-for-byte: 18 docs, UNEDITED Drive open -> Ctrl+S: 0 PATCH, Drive bytes identical, getMarkdown()==original, isModified()==false; Ctrl+Z right after open does not blank the doc', async ({ ext }) => {
     const items = docs(); expect(items.length).toBe(18);

@@ -184,3 +184,55 @@
 .hljs-attr, .hljs-attribute, .hljs-variable, .hljs-property { color: var(--mdx-hl-attr); }
 .hljs-deletion { color: var(--mdx-hl-keyword); }
 .hljs-emphasis { font-style: italic; } .hljs-strong { font-weight: 700; }
+
+/* ---------- Mermaid diagrams + KaTeX math nodes ---------- */
+.ProseMirror .mdx-node { --mdx-err: #cf222e; }
+.mdx-root[data-theme="dark"] .ProseMirror .mdx-node { --mdx-err: #ff7b72; }
+.ProseMirror .mdx-node.ProseMirror-selectednode { outline: 2px solid var(--mdx-accent); outline-offset: 2px; }
+.ProseMirror .mdx-node-toggle {
+  appearance: none; border: 1px solid var(--mdx-border); background: var(--mdx-toolbar-bg); color: var(--mdx-fg);
+  font: 600 12px/1 inherit; font-family: inherit; padding: 4px 8px; border-radius: 6px; cursor: pointer; white-space: normal;
+}
+.ProseMirror .mdx-node-toggle:hover { background: var(--mdx-btn-hover); }
+.ProseMirror .mdx-node-toggle:focus-visible { outline: 2px solid var(--mdx-accent); outline-offset: 1px; }
+.ProseMirror .mdx-node.mdx-editing > .mdx-node-head .mdx-node-toggle, .ProseMirror .mdx-node-toggle[aria-expanded="true"] { background: var(--mdx-btn-active); border-color: var(--mdx-accent); }
+
+/* block nodes */
+.ProseMirror div.mdx-node { margin: 0 0 1em; border: 1px solid var(--mdx-border); border-radius: 6px; background: var(--mdx-bg); white-space: normal; }
+.ProseMirror .mdx-node-head { display: flex; align-items: center; justify-content: space-between; padding: 3px 8px; border-bottom: 1px solid var(--mdx-border); background: var(--mdx-toolbar-bg); border-radius: 6px 6px 0 0; }
+.ProseMirror .mdx-node-label { font: 600 11px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-transform: uppercase; letter-spacing: .04em; color: var(--mdx-muted); user-select: none; }
+.ProseMirror .mdx-node-head .mdx-node-toggle { padding: 2px 8px; }
+.ProseMirror .mdx-mermaid-render { padding: 12px; overflow: auto; text-align: center; min-height: 24px; cursor: default; }
+.ProseMirror .mdx-mermaid-render > svg { max-width: 100%; height: auto; display: inline-block; }
+.ProseMirror .mdx-math-block .mdx-math-render { padding: 6px 12px; overflow-x: auto; overflow-y: hidden; text-align: center; cursor: text; min-height: 24px; }
+.ProseMirror .mdx-math-block .mdx-math-render .katex-display { margin: .4em 0; }
+.ProseMirror textarea.mdx-mermaid-source, .ProseMirror textarea.mdx-math-source {
+  display: block; box-sizing: border-box; width: 100%; margin: 0; padding: 10px 12px; border: 0; border-top: 1px solid var(--mdx-border); border-radius: 0 0 6px 6px; outline: none; resize: vertical;
+  background: var(--mdx-code-bg); color: var(--mdx-code-fg); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; white-space: pre;
+}
+.ProseMirror textarea.mdx-mermaid-source:focus, .ProseMirror textarea.mdx-math-source:focus { box-shadow: inset 0 0 0 2px var(--mdx-accent); }
+.ProseMirror .mdx-node [hidden] { display: none !important; }
+.ProseMirror div.mdx-node.mdx-has-error { border-color: var(--mdx-err); }
+
+/* inline math */
+.ProseMirror span.mdx-math-inline { display: inline; position: relative; white-space: nowrap; border-radius: 4px; }
+.ProseMirror span.mdx-math-inline:hover, .ProseMirror span.mdx-math-inline.mdx-editing { background: var(--mdx-code-bg); }
+.ProseMirror .mdx-math-inline .mdx-math-render { cursor: text; }
+.ProseMirror .mdx-math-inline .mdx-node-toggle { display: none; position: absolute; right: -6px; top: -1.3em; z-index: 5; padding: 1px 4px; font-size: 11px; line-height: 1.2; } /* overlay: never shifts the text on hover */
+.ProseMirror .mdx-math-inline:hover .mdx-node-toggle, .ProseMirror .mdx-math-inline.mdx-editing .mdx-node-toggle, .ProseMirror .mdx-math-inline .mdx-node-toggle:focus-visible { display: inline-block; }
+.ProseMirror input.mdx-math-source {
+  box-sizing: content-box; min-width: 8ch; width: 22ch; max-width: 60ch; padding: 1px 6px; border: 1px solid var(--mdx-accent); border-radius: 4px; outline: none;
+  background: var(--mdx-code-bg); color: var(--mdx-code-fg); font: .88em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* errors (mermaid syntax errors are text in a box; bad LaTeX is KaTeX's own span, restyled) */
+.ProseMirror .mdx-error { color: var(--mdx-err); font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; text-align: left; }
+.ProseMirror div.mdx-error { padding: 8px 12px; border-left: 3px solid var(--mdx-err); background: var(--mdx-code-bg); border-radius: 4px; }
+.ProseMirror span.mdx-error { text-decoration: underline wavy var(--mdx-err); text-underline-offset: 2px; }
+.ProseMirror .katex-error.mdx-error { color: var(--mdx-err) !important; }
+
+/* KaTeX inherits the text color in both themes (no color override on .katex) */
+.ProseMirror .katex { color: inherit; font-size: 1.1em; }
+.ProseMirror .katex-display > .katex { white-space: normal; }
+.ProseMirror .mdx-error .mdx-error-src { font: inherit; background: none; padding: 0; text-decoration: none; opacity: .85; }
+.ProseMirror span.mdx-error:has(.mdx-error-src) { text-decoration: none; }

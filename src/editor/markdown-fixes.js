@@ -4,6 +4,7 @@
 import { Node, Extension, mergeAttributes } from '@tiptap/core';
 import { Markdown } from '@tiptap/markdown';
 import { Link } from '@tiptap/extension-link';
+import { mathDelimiterIndexes } from './math-syntax.js';
 
 // ------------------------------------------------------------------------------------------------
 // Text escaping (serializer side)
@@ -16,9 +17,11 @@ const ENTITY_AT = /&(?:lt|gt|quot|amp);/y; // the only entities @tiptap/markdown
 /** Escape characters that would create *inline* markdown syntax. Deliberately minimal (see EDITOR_NOTES). */
 export function escapeInline(text) {
   let out = '';
+  const dollars = text.includes('$') ? mathDelimiterIndexes(text) : null; // `$` that would open/close math -> `\$`
   for (let i = 0; i < text.length; i++) {
     const c = text[i], p = text[i - 1], n = text[i + 1];
     switch (c) {
+      case '$': out += dollars && dollars.has(i) ? '\\$' : '$'; break;
       case '\\': out += (n === undefined || n === '\n' || PUNCT.test(n)) ? '\\\\' : '\\'; break;
       case '*': case '~': out += (isWs(p) && isWs(n)) ? c : '\\' + c; break;         // spaced `2 * 3` cannot open/close emphasis
       case '_': out += ((isAlnum(p) && isAlnum(n)) || (isWs(p) && isWs(n))) ? c : '\\_'; break; // intra-word snake_case is inert

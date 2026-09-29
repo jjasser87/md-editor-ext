@@ -124,8 +124,13 @@ test('Drive code: bundle has no unexpected http(s) URLs outside comments; google
     /^https:\/\/prosemirror\.net\/docs\/guide\/#generatable$/, // ProseMirror error text
     /^https:\/\/github\.com\/highlightjs\/.*/, /^https:\/\/github\.com\/markedjs\/marked\.$/, // console.warn / error text in libs (never fetched)
   ];
+  // Lazy vendor chunks (mermaid diagrams, chevrotain, katex, lodash, ...) contain doc/issue/licence links inside library error text and comments; never fetched.
+  // They are only allowed to reference these hosts; the Drive-specific allow-list above applies to the entry bundle (index-*.js) unchanged.
+  const VENDOR_DOC_HOSTS = /^https?:\/\/(github\.com|gist\.github\.com|chevrotain\.io|en\.wikipedia\.org|en\.wikibooks\.org|langium\.org|lodash\.com|openjsf\.org|underscorejs\.org|engelschall\.com|opensource\.org|jquery\.org|tldrlegal\.com|www\.w3\.org|www\.eclipse\.org|tex\.stackexchange\.com|planetcalc\.com|www\.yaml\.org|katex\.org|mermaid\.js\.org|docs\.mermaidchart\.com|prosemirror\.net)(\/|$|[.#?])|^https?:\/\/…?$|^https?:\/\/$|^http:\/\/\/org\/eclipse\//;
+  const vendorHosts = new Set();
   const offenders = []; const googleapis = new Set(); const seenComment = new Set();
   for (const f of jsFiles) {
+    const isEntry = /\/index-[^/]+\.js$/.test(f);
     const lines = fs.readFileSync(f, 'utf8').split('\n'); let inBlock = false;
     lines.forEach((line, i) => {
       const t = line.trim();
@@ -136,12 +141,14 @@ test('Drive code: bundle has no unexpected http(s) URLs outside comments; google
         if (/googleapis\.com/.test(m[0])) googleapis.add(m[0]);
         if (isComment) { seenComment.add(m[0].replace(/^(https?:\/\/[^/]+).*/, '$1')); continue; }
         // markdown-link style "[x](https://…)" in a JSDoc-in-template line is still a doc line; fall back to allow-list
+        if (!isEntry && VENDOR_DOC_HOSTS.test(m[0])) { vendorHosts.add(m[0].replace(/^(https?:\/\/[^/]+).*/, '$1')); continue; }
         if (!ALLOWED_CODE.some((r) => r.test(m[0]))) offenders.push(`${path.relative(EXT, f)}:${i + 1}: ${m[0]}  <- ${t.slice(0, 100)}`);
       }
     });
   }
   console.log('googleapis.com URLs in bundle:', JSON.stringify([...googleapis]));
   console.log('hosts only in comments (doc links):', JSON.stringify([...seenComment].sort()));
+  console.log('hosts in lazy vendor chunks (library error text / licence links, never fetched):', JSON.stringify([...vendorHosts].sort()));
   expect(offenders, 'unexpected non-comment URL strings').toEqual([]);
   // exactly the three Drive endpoints; nothing else on google domains (no accounts.google.com, no apis.google.com/gapi, no picker)
   expect([...googleapis].filter((u) => !/^https:\/\/(www\.googleapis\.com\/(upload\/)?drive\/v3|oauth2\.googleapis\.com\/revoke)/.test(u))).toEqual([]);
@@ -158,7 +165,9 @@ test('Drive code: no eval/inline handlers/remote assets in the drive-ui CSS + bu
   expect(/@import|url\(\s*["']?https?:|url\(\s*["']?\/\//i.test(css)).toBe(false);
   const html = fs.readFileSync(path.join(EXT, 'editor', 'index.html'), 'utf8');
   for (const id of ['btn-drive-open', 'btn-drive-save', 'drive-status']) expect(html).toContain(`id="${id}"`);
-  const js = jsFiles.map((f) => fs.readFileSync(f, 'utf8')).join('\n');
+  // entry bundle only: lazy vendor chunks (mermaid / katex) legitimately use setAttribute("style") for SVG (sanitised by strict mode); they are covered by 11-mermaid-math static checks
+  const js = jsFiles.filter((f) => /\/index-[^/]+\.js$/.test(f)).map((f) => fs.readFileSync(f, 'utf8')).join('\n');
+  expect(js.length).toBeGreaterThan(100000);
   expect(/\.innerHTML\s*=\s*[^;]*(drive|Drive|gdui)/.test(js)).toBe(false);
   expect(/setAttribute\(\s*["']style["']|\.style\.cssText\s*=/.test(js.slice(js.indexOf('gdui')))).toBe(false); // drive-ui uses classes only (CSP-friendly)
 });

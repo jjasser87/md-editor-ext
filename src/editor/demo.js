@@ -20,6 +20,21 @@ console.log('hi');
 > quote
 
 ---
+
+## Diagrams and math
+
+\`\`\`mermaid
+flowchart LR
+    A[Write] --> B{Render?}
+    B -->|Yes| C[SVG]
+    B -->|No| A
+\`\`\`
+
+Inline $e^{i\\pi} + 1 = 0$ next to a price of $5 and $10.
+
+$$
+\\int_0^1 x^2\\,dx = \\frac{1}{3}
+$$
 `;
 const $ = (id) => document.getElementById(id);
 let theme = 'light';

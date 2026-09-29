@@ -1,3 +1,4 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./mermaid.core-DJNwReCu.js","./purify.es-D11vWzcp.js"])))=>i.map(i=>d[i]);
 var __defProp = Object.defineProperty;
 var __exportAll = (all, no_symbols) => {
   let target = {};
@@ -30,8 +31,8 @@ OrderedMap.prototype = {
   // value, or adding a binding to the end of the map. If `newKey` is
   // given, the key of the binding will be replaced with that key.
   update: function(key, value, newKey) {
-    var self = newKey && newKey != key ? this.remove(newKey) : this;
-    var found2 = self.find(key), content = self.content.slice();
+    var self2 = newKey && newKey != key ? this.remove(newKey) : this;
+    var found2 = self2.find(key), content = self2.content.slice();
     if (found2 == -1) {
       content.push(newKey || key, value);
     } else {
@@ -1710,15 +1711,15 @@ class ContentMatch {
   content expression.
   */
   fillBefore(after, toEnd = false, startIndex = 0) {
-    let seen = [this];
+    let seen2 = [this];
     function search(match, types) {
       let finished = match.matchFragment(after, startIndex);
       if (finished && (!toEnd || finished.validEnd))
         return Fragment.from(types.map((tp) => tp.createAndFill()));
       for (let i = 0; i < match.next.length; i++) {
         let { type, next } = match.next[i];
-        if (!(type.isText || type.hasRequiredAttrs()) && seen.indexOf(next) == -1) {
-          seen.push(next);
+        if (!(type.isText || type.hasRequiredAttrs()) && seen2.indexOf(next) == -1) {
+          seen2.push(next);
           let found2 = search(next, types.concat(type));
           if (found2)
             return found2;
@@ -1746,7 +1747,7 @@ class ContentMatch {
   @internal
   */
   computeWrapping(target) {
-    let seen = /* @__PURE__ */ Object.create(null), active = [{ match: this, type: null, via: null }];
+    let seen2 = /* @__PURE__ */ Object.create(null), active = [{ match: this, type: null, via: null }];
     while (active.length) {
       let current = active.shift(), match = current.match;
       if (match.matchType(target)) {
@@ -1757,9 +1758,9 @@ class ContentMatch {
       }
       for (let i = 0; i < match.next.length; i++) {
         let { type, next } = match.next[i];
-        if (!type.isLeaf && !type.hasRequiredAttrs() && !(type.name in seen) && (!current.type || next.validEnd)) {
+        if (!type.isLeaf && !type.hasRequiredAttrs() && !(type.name in seen2) && (!current.type || next.validEnd)) {
           active.push({ match: type.contentMatch, type, via: current });
-          seen[type.name] = true;
+          seen2[type.name] = true;
         }
       }
     }
@@ -1785,18 +1786,18 @@ class ContentMatch {
   @internal
   */
   toString() {
-    let seen = [];
+    let seen2 = [];
     function scan(m2) {
-      seen.push(m2);
+      seen2.push(m2);
       for (let i = 0; i < m2.next.length; i++)
-        if (seen.indexOf(m2.next[i].next) == -1)
+        if (seen2.indexOf(m2.next[i].next) == -1)
           scan(m2.next[i].next);
     }
     scan(this);
-    return seen.map((m2, i) => {
+    return seen2.map((m2, i) => {
       let out = i + (m2.validEnd ? "*" : " ") + " ";
       for (let i2 = 0; i2 < m2.next.length; i2++)
-        out += (i2 ? ", " : "") + m2.next[i2].type.name + "->" + seen.indexOf(m2.next[i2].next);
+        out += (i2 ? ", " : "") + m2.next[i2].type.name + "->" + seen2.indexOf(m2.next[i2].next);
       return out;
     }).join("\n");
   }
@@ -2450,7 +2451,7 @@ function isTagRule(rule) {
 function isStyleRule(rule) {
   return rule.style != null;
 }
-class DOMParser {
+let DOMParser$1 = class DOMParser2 {
   /**
   Create a parser that targets the given schema, using the given
   parsing rules.
@@ -2576,9 +2577,9 @@ class DOMParser {
   [priority](https://prosemirror.net/docs/ref/#model.GenericParseRule.priority).
   */
   static fromSchema(schema) {
-    return schema.cached.domParser || (schema.cached.domParser = new DOMParser(schema, DOMParser.schemaRules(schema)));
+    return schema.cached.domParser || (schema.cached.domParser = new DOMParser2(schema, DOMParser2.schemaRules(schema)));
   }
-}
+};
 const blockTags = {
   address: true,
   article: true,
@@ -3101,13 +3102,13 @@ function markMayApply(markType, nodeType) {
     let parent = nodes[name];
     if (!parent.allowsMarkType(markType))
       continue;
-    let seen = [], scan = (match) => {
-      seen.push(match);
+    let seen2 = [], scan = (match) => {
+      seen2.push(match);
       for (let i = 0; i < match.edgeCount; i++) {
         let { type, next } = match.edge(i);
         if (type == nodeType)
           return true;
-        if (seen.indexOf(next) < 0 && scan(next))
+        if (seen2.indexOf(next) < 0 && scan(next))
           return true;
       }
     };
@@ -5821,14 +5822,14 @@ class Transaction extends Transform {
     return (this.updated & UPDATED_SCROLL) > 0;
   }
 }
-function bind(f, self) {
-  return !self || !f ? f : f.bind(self);
+function bind(f, self2) {
+  return !self2 || !f ? f : f.bind(self2);
 }
 class FieldDesc {
-  constructor(name, desc, self) {
+  constructor(name, desc, self2) {
     this.name = name;
-    this.init = bind(desc.init, self);
-    this.apply = bind(desc.apply, self);
+    this.init = bind(desc.init, self2);
+    this.apply = bind(desc.apply, self2);
   }
 }
 const baseFields = [
@@ -5929,27 +5930,27 @@ class EditorState {
   applyTransaction(rootTr) {
     if (!this.filterTransaction(rootTr))
       return { state: this, transactions: [] };
-    let trs = [rootTr], newState = this.applyInner(rootTr), seen = null;
+    let trs = [rootTr], newState = this.applyInner(rootTr), seen2 = null;
     for (; ; ) {
       let haveNew = false;
       for (let i = 0; i < this.config.plugins.length; i++) {
         let plugin = this.config.plugins[i];
         if (plugin.spec.appendTransaction) {
-          let n = seen ? seen[i].n : 0, oldState = seen ? seen[i].state : this;
+          let n = seen2 ? seen2[i].n : 0, oldState = seen2 ? seen2[i].state : this;
           let tr2 = n < trs.length && plugin.spec.appendTransaction.call(plugin, n ? trs.slice(n) : trs, oldState, newState);
           if (tr2 && newState.filterTransaction(tr2, i)) {
             tr2.setMeta("appendedTransaction", rootTr);
-            if (!seen) {
-              seen = [];
+            if (!seen2) {
+              seen2 = [];
               for (let j2 = 0; j2 < this.config.plugins.length; j2++)
-                seen.push(j2 < i ? { state: newState, n: trs.length } : { state: this, n: 0 });
+                seen2.push(j2 < i ? { state: newState, n: trs.length } : { state: this, n: 0 });
             }
             trs.push(tr2);
             newState = newState.applyInner(tr2);
             haveNew = true;
           }
-          if (seen)
-            seen[i] = { state: newState, n: trs.length };
+          if (seen2)
+            seen2[i] = { state: newState, n: trs.length };
         }
       }
       if (!haveNew)
@@ -6060,13 +6061,13 @@ class EditorState {
     return instance;
   }
 }
-function bindProps(obj, self, target) {
+function bindProps(obj, self2, target) {
   for (let prop in obj) {
     let val = obj[prop];
     if (val instanceof Function)
-      val = val.bind(self);
+      val = val.bind(self2);
     else if (prop == "handleDOMEvents")
-      val = bindProps(val, self, {});
+      val = bindProps(val, self2, {});
     target[prop] = val;
   }
   return target;
@@ -7771,13 +7772,13 @@ class ViewDesc {
 }
 class WidgetViewDesc extends ViewDesc {
   constructor(parent, widget, view, pos) {
-    let self, dom = widget.type.toDOM;
+    let self2, dom = widget.type.toDOM;
     if (typeof dom == "function")
       dom = dom(view, () => {
-        if (!self)
+        if (!self2)
           return pos;
-        if (self.parent)
-          return self.parent.posBeforeChild(self);
+        if (self2.parent)
+          return self2.parent.posBeforeChild(self2);
       });
     if (!widget.type.spec.raw) {
       let elt = isElt(dom) ? dom : document.createElement("span");
@@ -7790,7 +7791,7 @@ class WidgetViewDesc extends ViewDesc {
     super(parent, [], dom, null);
     this.widget = widget;
     this.widget = widget;
-    self = this;
+    self2 = this;
   }
   matchesWidget(widget) {
     return this.dirty == NOT_DIRTY && widget.type.eq(this.widget.type);
@@ -9337,7 +9338,7 @@ function parseFromClipboard(view, text, html, plainText, $context) {
       dom = child;
     }
   if (!slice2) {
-    let parser = view.someProp("clipboardParser") || view.someProp("domParser") || DOMParser.fromSchema(view.state.schema);
+    let parser = view.someProp("clipboardParser") || view.someProp("domParser") || DOMParser$1.fromSchema(view.state.schema);
     slice2 = parser.parseSlice(dom, {
       preserveWhitespace: !!(asText || sliceData),
       context: $context,
@@ -11277,7 +11278,7 @@ function parseBetween(view, from_, to_, addedNodes) {
     }
   }
   let startDoc = view.state.doc;
-  let parser = view.someProp("domParser") || DOMParser.fromSchema(view.state.schema);
+  let parser = view.someProp("domParser") || DOMParser$1.fromSchema(view.state.schema);
   let $from = startDoc.resolve(from2);
   let sel = null, doc2 = parser.parse(parent, {
     topNode: $from.parent,
@@ -12736,11 +12737,11 @@ function createNodeFromContent(content, schema, options) {
           }]
         } })
       });
-      if (options.slice) DOMParser.fromSchema(contentCheckSchema).parseSlice(elementFromString(content), options.parseOptions);
-      else DOMParser.fromSchema(contentCheckSchema).parse(elementFromString(content), options.parseOptions);
+      if (options.slice) DOMParser$1.fromSchema(contentCheckSchema).parseSlice(elementFromString(content), options.parseOptions);
+      else DOMParser$1.fromSchema(contentCheckSchema).parse(elementFromString(content), options.parseOptions);
       if (options.errorOnInvalidContent && hasInvalidContent) throw new Error("[tiptap error]: Invalid HTML content", { cause: /* @__PURE__ */ new Error(`Invalid element found: ${invalidContent}`) });
     }
-    const parser = DOMParser.fromSchema(schema);
+    const parser = DOMParser$1.fromSchema(schema);
     if (options.slice) return parser.parseSlice(elementFromString(content), options.parseOptions).content;
     return parser.parse(elementFromString(content), options.parseOptions);
   }
@@ -13517,7 +13518,7 @@ function getSchema(extensions, editor2) {
 function generateJSON(html, extensions) {
   const schema = getSchema(extensions);
   const dom = elementFromString(html);
-  return DOMParser.fromSchema(schema).parse(dom).toJSON();
+  return DOMParser$1.fromSchema(schema).parse(dom).toJSON();
 }
 function getTextBetween(startNode, range, options) {
   const { from: from2, to } = range;
@@ -13570,10 +13571,10 @@ function getAttributes(state2, typeOrName) {
   return {};
 }
 function removeDuplicates(array, by = JSON.stringify) {
-  const seen = {};
+  const seen2 = {};
   return array.filter((item) => {
     const key = by(item);
-    return Object.prototype.hasOwnProperty.call(seen, key) ? false : seen[key] = true;
+    return Object.prototype.hasOwnProperty.call(seen2, key) ? false : seen2[key] = true;
   });
 }
 function simplifyChangedRanges(changes) {
@@ -17468,7 +17469,7 @@ function render(tag, attributes) {
   ]);
   return createJSXElement([tag, rest]);
 }
-const h$1 = (tag, attributes) => render(tag, attributes);
+const h$2 = (tag, attributes) => render(tag, attributes);
 const handleBackspace$1 = (editor2, type) => {
   var _previous$lastChild;
   const { state: state2 } = editor2;
@@ -17509,9 +17510,9 @@ const Blockquote = Node$1.create({
     return [{ tag: "blockquote" }];
   },
   renderHTML({ HTMLAttributes }) {
-    return /* @__PURE__ */ h$1("blockquote", {
+    return /* @__PURE__ */ h$2("blockquote", {
       ...mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
-      children: /* @__PURE__ */ h$1("slot", {})
+      children: /* @__PURE__ */ h$2("slot", {})
     });
   },
   parseMarkdown: (token, helpers) => {
@@ -17588,9 +17589,9 @@ const Bold = Mark2.create({
     ];
   },
   renderHTML({ HTMLAttributes }) {
-    return /* @__PURE__ */ h$1("strong", {
+    return /* @__PURE__ */ h$2("strong", {
       ...mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
-      children: /* @__PURE__ */ h$1("slot", {})
+      children: /* @__PURE__ */ h$2("slot", {})
     });
   },
   markdownTokenName: "strong",
@@ -25117,15 +25118,73 @@ const Markdown = Extension.create({
     if ((_json$content = json2.content) === null || _json$content === void 0 ? void 0 : _json$content.length) this.editor.options.content = json2;
   }
 });
+const INLINE_DD = /^\$\$(?!\s)((?:\\.|[^$\\\n`])+?)(?<!\s)\$\$/;
+const INLINE_D = /^\$(?![\s$])((?:\\.|[^$\\\n`])+?)(?<!\s)\$(?!\d)/;
+function matchInlineMath(src) {
+  if (src.charCodeAt(0) !== 36) return null;
+  const m2 = INLINE_DD.exec(src) || INLINE_D.exec(src);
+  if (!m2) return null;
+  return { raw: m2[0], src: m2[1], delim: m2[0].startsWith("$$") ? "$$" : "$" };
+}
+const BLOCK = /^ {0,3}\$\$((?:(?!\$\$)[\s\S])+?)\$\$[ \t]*(?:\n|$)/;
+function matchBlockMath(src) {
+  const m2 = BLOCK.exec(src);
+  if (!m2 || !m2[1].trim()) return null;
+  return { raw: m2[0], src: m2[1] };
+}
+function blockMathStart(src) {
+  let i = 0;
+  while (i <= src.length) {
+    if (/^ {0,3}\$\$/.test(src.slice(i, i + 5)) && matchBlockMath(src.slice(i))) return i;
+    const nl = src.indexOf("\n", i);
+    if (nl < 0) return -1;
+    i = nl + 1;
+  }
+  return -1;
+}
+function mathDelimiterIndexes(text) {
+  const out = /* @__PURE__ */ new Set();
+  for (let i = text.indexOf("$"); i >= 0 && i < text.length; i = text.indexOf("$", i + 1)) {
+    const m2 = matchInlineMath(text.slice(i));
+    if (!m2) continue;
+    const d = m2.delim.length;
+    for (let k2 = 0; k2 < d; k2++) {
+      out.add(i + k2);
+      out.add(i + m2.raw.length - 1 - k2);
+    }
+    i += m2.raw.length - 1;
+  }
+  return out;
+}
+function sanitizeInlineMath(text) {
+  let s = String(text ?? "").replace(/\s*\n\s*/g, " ").trim();
+  s = s.replace(/\\[\s\S]|\$/g, (m2) => m2 === "$" ? "\\$" : m2);
+  s = s.replace(/(^|[^\\])((?:\\\\)*)\\$/, "$1$2");
+  return s.trim();
+}
+function sanitizeBlockMath(text) {
+  return String(text ?? "").replace(/\$\$/g, "$\\$");
+}
+const MERMAID_FIRST = /^\s*(?:(?:flowchart|graph)[ \t]+(?:TB|TD|BT|RL|LR)\b|(?:sequenceDiagram|classDiagram(?:-v2)?|stateDiagram(?:-v2)?|erDiagram|gitGraph|requirementDiagram|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta|quadrantChart|mindmap|timeline|gantt|journey|kanban)[ \t]*(?:\n|$)|pie[ \t]+(?:showData|title\b)|pie[ \t]*\n)/;
+function looksLikeMermaid(text) {
+  const t = String(text ?? "").replace(/^\uFEFF/, "");
+  if (!/\n/.test(t.trim())) return false;
+  const first2 = t.replace(/^(?:\s*%%[^\n]*\n)+/, "");
+  return MERMAID_FIRST.test(first2);
+}
 const PUNCT = /[!-/:-@[-`{-~]/;
 const isWs = (c2) => c2 !== void 0 && /\s/.test(c2);
 const isAlnum = (c2) => c2 !== void 0 && /[\p{L}\p{N}]/u.test(c2);
 const ENTITY_AT = /&(?:lt|gt|quot|amp);/y;
 function escapeInline(text) {
   let out = "";
+  const dollars = text.includes("$") ? mathDelimiterIndexes(text) : null;
   for (let i = 0; i < text.length; i++) {
     const c2 = text[i], p = text[i - 1], n = text[i + 1];
     switch (c2) {
+      case "$":
+        out += dollars && dollars.has(i) ? "\\$" : "$";
+        break;
       case "\\":
         out += n === void 0 || n === "\n" || PUNCT.test(n) ? "\\\\" : "\\";
         break;
@@ -25442,12 +25501,12 @@ var TableMap = class {
   }
   cellsInRect(rect) {
     const result = [];
-    const seen = {};
+    const seen2 = {};
     for (let row = rect.top; row < rect.bottom; row++) for (let col = rect.left; col < rect.right; col++) {
       const index = row * this.width + col;
       const pos = this.map[index];
-      if (seen[pos]) continue;
-      seen[pos] = true;
+      if (seen2[pos]) continue;
+      seen2[pos] = true;
       if (col == rect.left && col && this.map[index - 1] == pos || row == rect.top && row && this.map[index - this.width] == pos) continue;
       result.push(pos);
     }
@@ -25558,11 +25617,11 @@ function findWidth(table) {
 }
 function findBadColWidths(map2, colWidths, table) {
   if (!map2.problems) map2.problems = [];
-  const seen = {};
+  const seen2 = {};
   for (let i = 0; i < map2.map.length; i++) {
     const pos = map2.map[i];
-    if (seen[pos]) continue;
-    seen[pos] = true;
+    if (seen2[pos]) continue;
+    seen2[pos] = true;
     const node = table.nodeAt(pos);
     if (!node) throw new RangeError(`No cell with offset ${pos} found`);
     let updated = null;
@@ -25709,14 +25768,14 @@ var CellSelection = class CellSelection2 extends Selection {
     const map2 = TableMap.get(table);
     const tableStart = this.$anchorCell.start(-1);
     const rect = map2.rectBetween(this.$anchorCell.pos - tableStart, this.$headCell.pos - tableStart);
-    const seen = {};
+    const seen2 = {};
     const rows = [];
     for (let row = rect.top; row < rect.bottom; row++) {
       const rowContent = [];
       for (let index = row * map2.width + rect.left, col = rect.left; col < rect.right; col++, index++) {
         const pos = map2.map[index];
-        if (seen[pos]) continue;
-        seen[pos] = true;
+        if (seen2[pos]) continue;
+        seen2[pos] = true;
         const cellRect = map2.findCell(pos);
         let cell = table.nodeAt(pos);
         if (!cell) throw new RangeError(`No cell with offset ${pos} found`);
@@ -26123,11 +26182,11 @@ function removeRow(tr2, { map: map2, table, tableStart }, row) {
   const nextRow = rowPos + table.child(row).nodeSize;
   const mapFrom = tr2.mapping.maps.length;
   tr2.delete(rowPos + tableStart, nextRow + tableStart);
-  const seen = /* @__PURE__ */ new Set();
+  const seen2 = /* @__PURE__ */ new Set();
   for (let col = 0, index = row * map2.width; col < map2.width; col++, index++) {
     const pos = map2.map[index];
-    if (seen.has(pos)) continue;
-    seen.add(pos);
+    if (seen2.has(pos)) continue;
+    seen2.add(pos);
     if (row > 0 && pos == map2.map[index - map2.width]) {
       const attrs = table.nodeAt(pos).attrs;
       tr2.setNodeMarkup(tr2.mapping.slice(mapFrom).map(pos + tableStart), null, {
@@ -26191,15 +26250,15 @@ function mergeCells(state2, dispatch) {
   if (cellsOverlapRectangle(map2, rect)) return false;
   if (dispatch) {
     const tr2 = state2.tr;
-    const seen = {};
+    const seen2 = {};
     let content = Fragment.empty;
     let mergedPos;
     let mergedCell;
     for (let row = rect.top; row < rect.bottom; row++) for (let col = rect.left; col < rect.right; col++) {
       const cellPos = map2.map[row * map2.width + col];
       const cell = rect.table.nodeAt(cellPos);
-      if (seen[cellPos] || !cell) continue;
-      seen[cellPos] = true;
+      if (seen2[cellPos] || !cell) continue;
+      seen2[cellPos] = true;
       if (mergedPos == null) {
         mergedPos = cellPos;
         mergedCell = cell;
@@ -27893,6 +27952,7 @@ const Image = Node$1.create({
 });
 var src_default$2 = Image;
 var src_default$1 = Placeholder;
+var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
 function getDefaultExportFromCjs(x2) {
   return x2 && x2.__esModule && Object.prototype.hasOwnProperty.call(x2, "default") ? x2["default"] : x2;
 }
@@ -28594,10 +28654,10 @@ function MultiClass$1(mode) {
   endMultiClass$1(mode);
 }
 function compileLanguage$1(language) {
-  function langRe(value, global) {
+  function langRe(value, global2) {
     return new RegExp(
       source$2(value),
-      "m" + (language.case_insensitive ? "i" : "") + (language.unicodeRegex ? "u" : "") + (global ? "g" : "")
+      "m" + (language.case_insensitive ? "i" : "") + (language.unicodeRegex ? "u" : "") + (global2 ? "g" : "")
     );
   }
   class MultiRegex {
@@ -43477,10 +43537,10 @@ function MultiClass(mode) {
   endMultiClass(mode);
 }
 function compileLanguage(language) {
-  function langRe(value, global) {
+  function langRe(value, global2) {
     return new RegExp(
       source(value),
-      "m" + (language.case_insensitive ? "i" : "") + (language.unicodeRegex ? "u" : "") + (global ? "g" : "")
+      "m" + (language.case_insensitive ? "i" : "") + (language.unicodeRegex ? "u" : "") + (global2 ? "g" : "")
     );
   }
   class MultiRegex {
@@ -44511,9 +44571,9 @@ class HastEmitter {
    *   Nothing.
    */
   openNode(name) {
-    const self = this;
+    const self2 = this;
     const className = name.split(".").map(function(d, i) {
-      return i ? d + "_".repeat(i) : self.options.classPrefix + d;
+      return i ? d + "_".repeat(i) : self2.options.classPrefix + d;
     });
     const current = this.stack[this.stack.length - 1];
     const child = {
@@ -44546,8 +44606,778 @@ class HastEmitter {
     return "";
   }
 }
+const scriptRel = function detectScriptRel() {
+  const relList = typeof document !== "undefined" && document.createElement("link").relList;
+  return relList && relList.supports && relList.supports("modulepreload") ? "modulepreload" : "preload";
+}();
+const assetsURL = function(dep, importerUrl) {
+  return new URL(dep, importerUrl).href;
+};
+const seen = {};
+const __vitePreload = function preload(baseModule, deps, importerUrl) {
+  let promise = Promise.resolve();
+  if (deps && deps.length > 0) {
+    const links = document.getElementsByTagName("link");
+    const cspNonceMeta = document.querySelector(
+      "meta[property=csp-nonce]"
+    );
+    const cspNonce = cspNonceMeta?.nonce || cspNonceMeta?.getAttribute("nonce");
+    promise = Promise.allSettled(
+      deps.map((dep) => {
+        dep = assetsURL(dep, importerUrl);
+        if (dep in seen) return;
+        seen[dep] = true;
+        const isCss = dep.endsWith(".css");
+        const cssSelector = isCss ? '[rel="stylesheet"]' : "";
+        const isBaseRelative = !!importerUrl;
+        if (isBaseRelative) {
+          for (let i = links.length - 1; i >= 0; i--) {
+            const link2 = links[i];
+            if (link2.href === dep && (!isCss || link2.rel === "stylesheet")) {
+              return;
+            }
+          }
+        } else if (document.querySelector(`link[href="${dep}"]${cssSelector}`)) {
+          return;
+        }
+        const link = document.createElement("link");
+        link.rel = isCss ? "stylesheet" : scriptRel;
+        if (!isCss) {
+          link.as = "script";
+        }
+        link.crossOrigin = "";
+        link.href = dep;
+        if (cspNonce) {
+          link.setAttribute("nonce", cspNonce);
+        }
+        document.head.appendChild(link);
+        if (isCss) {
+          return new Promise((res, rej) => {
+            link.addEventListener("load", res);
+            link.addEventListener(
+              "error",
+              () => rej(new Error(`Unable to preload CSS for ${dep}`))
+            );
+          });
+        }
+      })
+    );
+  }
+  function handlePreloadError(err) {
+    const e = new Event("vite:preloadError", {
+      cancelable: true
+    });
+    e.payload = err;
+    window.dispatchEvent(e);
+    if (!e.defaultPrevented) {
+      throw err;
+    }
+  }
+  return promise.then((res) => {
+    for (const item of res || []) {
+      if (item.status !== "rejected") continue;
+      handlePreloadError(item.reason);
+    }
+    return baseModule().catch(handlePreloadError);
+  });
+};
+let mermaidP = null;
+let katexP = null;
+const loadMermaid = () => mermaidP ||= Promise.all([__vitePreload(() => import("./mermaid.core-DJNwReCu.js").then((n) => n.by), true ? __vite__mapDeps([0,1]) : void 0, import.meta.url), __vitePreload(() => import("./purify.es-D11vWzcp.js"), true ? [] : void 0, import.meta.url)]).then(([m2, dp]) => {
+  installPurifyHook(dp.default || dp);
+  return m2.default || m2;
+}).catch((e) => {
+  mermaidP = null;
+  throw e;
+});
+const loadKatex = () => katexP ||= __vitePreload(() => import("./katex-GJw3bfr-.js"), true ? [] : void 0, import.meta.url).then((m2) => m2.default || m2).catch((e) => {
+  katexP = null;
+  throw e;
+});
+const mermaidDisabled = () => !!globalThis.__MDX_NO_MERMAID__;
+function errorEl(kind, message, tag = "div") {
+  const e = document.createElement(tag);
+  e.className = "mdx-error";
+  e.dataset.mdxError = kind;
+  e.setAttribute("role", "status");
+  e.textContent = String(message).slice(0, 600);
+  return e;
+}
+const LOAD_ATTRS = ["src", "srcset", "href", "xlink:href", "poster", "background", "data", "action", "formaction", "ping", "longdesc", "usemap"];
+const LOAD_TAGS = /* @__PURE__ */ new Set(["picture", "source", "video", "audio", "track", "iframe", "frame", "object", "embed", "link", "script", "feimage"]);
+const SAFE_REF = /^\s*(#|data:image\/(png|gif|jpe?g|webp);)/i;
+const CSS_URL = /url\(\s*(['"]?)(?!\s*(#|data:))[^)]*\)/gi;
+const CSS_IMPORT = /@import\s+[^;]*;?/gi;
+const cleanCss = (css2) => css2.replace(CSS_IMPORT, "").replace(CSS_URL, "none");
+function stripElement(el, removeTags = true) {
+  const tag = el.localName ? el.localName.toLowerCase() : "";
+  if (removeTags && LOAD_TAGS.has(tag)) {
+    el.remove();
+    return;
+  }
+  if (removeTags && (tag === "img" || tag === "image")) {
+    const ref = el.getAttribute("src") || el.getAttribute("href") || el.getAttribute("xlink:href") || "";
+    if (!SAFE_REF.test(ref) || ref.trim().startsWith("#")) {
+      el.remove();
+      return;
+    }
+  }
+  const isAnchor = tag === "a";
+  for (const name of [...el.getAttributeNames()]) {
+    const lname = name.toLowerCase();
+    const v2 = el.getAttribute(name) || "";
+    if (LOAD_ATTRS.includes(lname) && !(isAnchor && (lname === "href" || lname === "xlink:href")) && !SAFE_REF.test(v2)) el.removeAttribute(name);
+    else if (lname === "style" && /url\(|@import/i.test(v2)) el.setAttribute(name, cleanCss(v2));
+  }
+}
+let purifyHooked = false;
+function installPurifyHook(DOMPurify) {
+  if (purifyHooked || !DOMPurify || typeof DOMPurify.addHook !== "function") return;
+  purifyHooked = true;
+  DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+    if (node && node.nodeType === 1) stripElement(node, false);
+  });
+}
+function sanitizeSvgString(svg) {
+  const doc2 = new DOMParser().parseFromString(`<!doctype html><body>${svg}`, "text/html");
+  for (const el of [...doc2.body.querySelectorAll("*")]) {
+    if (!el.isConnected) continue;
+    if (el.localName === "style") el.textContent = cleanCss(el.textContent || "");
+    stripElement(el);
+  }
+  return doc2.body.innerHTML;
+}
+const MERMAID_SECURE_KEYS = ["secure", "securityLevel", "startOnLoad", "maxTextSize", "suppressErrorRendering", "maxEdges", "themeCSS"];
+const RISKY_VALUE = /url\s*\(|@import|\\|expression\s*\(|image-set\s*\(|src\s*\(/i;
+const RISKY_KEY = /theme\s*css/i;
+const DIRECTIVE_RE = /%{2}\{((?:(?!\}%{2})[\s\S])*)\}%{2}/g;
+const FRONT_RE = /^([^\S\n\r]*)-{3}[^\S\n\r]*[\n\r]+([\s\S]*?)[\n\r]\1-{3}[^\S\n\r]*(?=[\n\r]|$)/;
+function scrubObject(v2) {
+  if (Array.isArray(v2)) return v2.map(scrubObject);
+  if (v2 && typeof v2 === "object") {
+    const o = {};
+    for (const [k2, val] of Object.entries(v2)) {
+      if (RISKY_KEY.test(k2) || /^__|proto|constr/.test(k2)) continue;
+      if (typeof val === "string" && (RISKY_VALUE.test(val) || RISKY_KEY.test(val))) continue;
+      o[k2] = scrubObject(val);
+    }
+    return o;
+  }
+  return typeof v2 === "string" && (RISKY_VALUE.test(v2) || RISKY_KEY.test(v2)) ? "" : v2;
+}
+function scrubDirectiveBody(body) {
+  const m2 = /^\s*(\w+)\s*:\s*([\s\S]*?)\s*$/.exec(body);
+  if (!m2 || !/^(init|initialize|config)$/i.test(m2[1])) return void 0;
+  const [, name, arg] = m2;
+  if (!RISKY_VALUE.test(arg) && !RISKY_KEY.test(arg)) return void 0;
+  let parsed;
+  try {
+    parsed = JSON.parse(arg);
+  } catch {
+    try {
+      parsed = JSON.parse(arg.replace(/'/g, '"'));
+    } catch {
+      return "";
+    }
+  }
+  const clean = scrubObject(parsed);
+  return Object.keys(clean).length ? `${name}: ${JSON.stringify(clean)}` : "";
+}
+function scrubFrontMatter(text) {
+  const lines = text.split(/\r?\n/);
+  const out = [];
+  let skipIndent = -1;
+  for (const line of lines) {
+    const indent = line.length - line.trimStart().length;
+    if (skipIndent >= 0) {
+      if (!line.trim() || indent > skipIndent) continue;
+      skipIndent = -1;
+    }
+    if (RISKY_KEY.test(line.split(":")[0]) || RISKY_VALUE.test(line) || /theme\s*css/i.test(line)) {
+      skipIndent = indent;
+      continue;
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
+function sanitizeMermaidSource(code) {
+  let text = String(code);
+  const fm = FRONT_RE.exec(text);
+  if (fm && (RISKY_VALUE.test(fm[2]) || RISKY_KEY.test(fm[2]))) {
+    const inner = scrubFrontMatter(fm[2]);
+    text = `${fm[1]}---
+${inner}
+${fm[1]}---` + text.slice(fm[0].length);
+  }
+  return text.replace(DIRECTIVE_RE, (all, body) => {
+    const r2 = scrubDirectiveBody(body);
+    return r2 === void 0 ? all : r2 ? `%%{${r2}}%%` : "";
+  });
+}
+let mmdSeq = 0;
+let mmdQueue = Promise.resolve();
+const mmdCache = /* @__PURE__ */ new Map();
+const CACHE_MAX = 60;
+function uniqueSvgIds(svg) {
+  const m2 = /\sid="(mdx-mmd-\d+)"/.exec(svg);
+  if (!m2) return svg;
+  return svg.replace(new RegExp(m2[1] + "(?!\\d)", "g"), `mdx-mmd-${++mmdSeq}`);
+}
+function cleanupMermaidTemp(id) {
+  for (const sel of [`#d${id}`, `#${id}`, `#i${id}`]) {
+    document.querySelectorAll(sel).forEach((n) => {
+      if (n.parentNode === document.body || !n.closest(".mdx-mermaid-render")) n.remove();
+    });
+  }
+}
+function renderMermaid(container, code, theme) {
+  const mTheme = theme === "dark" ? "dark" : "default";
+  const run2 = async () => {
+    if (!String(code).trim()) {
+      container.replaceChildren();
+      return { ok: true, empty: true };
+    }
+    if (mermaidDisabled()) {
+      container.replaceChildren(errorEl("mermaid", "Diagram rendering is disabled in this environment."));
+      return { ok: false, message: "disabled" };
+    }
+    const key = `${mTheme}\0${code}`;
+    const cached = mmdCache.get(key);
+    if (cached) {
+      container.innerHTML = uniqueSvgIds(cached);
+      return { ok: true, cached: true };
+    }
+    const id = `mdx-mmd-${++mmdSeq}`;
+    try {
+      const mermaid = await loadMermaid();
+      mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: "strict",
+        theme: mTheme,
+        suppressErrorRendering: true,
+        // don't append mermaid's own "syntax error" bomb graphic to the page
+        logLevel: "fatal",
+        secure: MERMAID_SECURE_KEYS
+        // BUG-31: diagram directives / front matter can never set themeCSS (see above)
+      });
+      const mCode = sanitizeMermaidSource(code);
+      await mermaid.parse(mCode);
+      const { svg: rawSvg } = await mermaid.render(id, mCode);
+      const svg = sanitizeSvgString(rawSvg);
+      if (mmdCache.size >= CACHE_MAX) mmdCache.delete(mmdCache.keys().next().value);
+      mmdCache.set(key, svg);
+      container.innerHTML = svg;
+      return { ok: true };
+    } catch (err) {
+      const message = err && (err.message || err.str) || String(err);
+      container.replaceChildren(errorEl("mermaid", `Mermaid syntax error: ${message}`));
+      return { ok: false, message };
+    } finally {
+      cleanupMermaidTemp(id);
+    }
+  };
+  const p = mmdQueue.then(run2, run2);
+  mmdQueue = p.catch(() => {
+  });
+  return p;
+}
+async function renderMath(container, tex, displayMode) {
+  const src = String(tex);
+  let untrusted = null;
+  try {
+    const katex = await loadKatex();
+    katex.render(src, container, {
+      displayMode: !!displayMode,
+      throwOnError: true,
+      // trust:false makes KaTeX silently render \href/\url/\includegraphics/\htmlClass... as red text; record the attempt and report it
+      trust: (ctx) => {
+        untrusted = untrusted || ctx.command;
+        return false;
+      },
+      strict: "ignore",
+      // unicode text / \text quirks etc. are not errors and don't warn
+      output: "htmlAndMathml",
+      maxExpand: 1e3
+    });
+    if (untrusted) throw new Error(`Command ${untrusted} is not allowed (links, images and HTML attributes are disabled)`);
+    return { ok: true };
+  } catch (err) {
+    const message = String(err && (err.rawMessage || err.message) || err);
+    const box = errorEl("math", "", displayMode ? "div" : "span");
+    box.title = message;
+    const head = document.createElement("span");
+    head.className = "mdx-error-msg";
+    head.textContent = `Math error: ${message}`;
+    const code = document.createElement("code");
+    code.className = "mdx-error-src";
+    code.textContent = src.slice(0, 400);
+    box.append(head, " ", code);
+    container.replaceChildren(box);
+    return { ok: false, message };
+  }
+}
+const MERMAID_SAMPLE = "flowchart LR\n    A[Start] --> B{Choice}\n    B -->|Yes| C[Done]\n    B -->|No| A";
+const DEBOUNCE_MS$2 = 350;
+const registry = /* @__PURE__ */ new WeakMap();
+const ctrlOfDom = /* @__PURE__ */ new WeakMap();
+const regFor = (editor2) => {
+  let s = registry.get(editor2);
+  if (!s) registry.set(editor2, s = /* @__PURE__ */ new Set());
+  return s;
+};
+function flushEdits(editor2) {
+  const s = registry.get(editor2);
+  if (s) for (const c2 of [...s]) c2.flush();
+}
+function refreshTheme(editor2) {
+  const s = registry.get(editor2);
+  if (s) for (const c2 of [...s]) c2.rerender();
+}
+function openSourceAt(editor2, pos) {
+  const dom = editor2.view.nodeDOM(pos);
+  const c2 = dom && ctrlOfDom.get(dom);
+  if (c2) c2.open();
+}
+function insertNodeAndOpen(editor2, name, attrs, { block }) {
+  const { state: state2 } = editor2;
+  const from2 = state2.selection.from;
+  const content = block ? [{ type: name, attrs }, { type: "paragraph" }] : { type: name, attrs };
+  if (!editor2.chain().focus().insertContent(content).run()) return false;
+  let best = null;
+  editor2.state.doc.descendants((n, pos) => {
+    if (n.type.name === name && pos >= from2 - 2 && (best === null || pos <= editor2.state.selection.from)) best = pos;
+    return true;
+  });
+  if (best !== null) openSourceAt(editor2, best);
+  return true;
+}
+const NODE_NAMES = /* @__PURE__ */ new Set(["mermaidBlock", "mathInline", "mathBlock"]);
+const enterOpens = (editor2) => {
+  const sel = editor2.state.selection;
+  if (!(sel instanceof NodeSelection) || !NODE_NAMES.has(sel.node.type.name)) return false;
+  openSourceAt(editor2, sel.from);
+  return true;
+};
+const h$1 = (tag, cls, attrs = {}) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  for (const [k2, v2] of Object.entries(attrs)) e.setAttribute(k2, v2);
+  return e;
+};
+const themeOf = (editor2) => {
+  try {
+    const t = editor2.view.dom.closest("[data-theme]");
+    return t && t.dataset.theme === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+};
+function makeView({ node, editor: editor2, getPos, kind, label, field, cls, srcCls, renderCls, inline, attr, readSrc, commitValue, doRender, onKeyEnter }) {
+  let cur = node;
+  let isOpen = false, timer = null, destroyed = false, renderSeq = 0, lastKey = null;
+  const dom = h$1(inline ? "span" : "div", `mdx-node ${cls}`, { "data-mdx-node": kind });
+  dom.contentEditable = "false";
+  const toggle = h$1("button", "mdx-node-toggle", { type: "button", "data-mdx-action": "toggle-source", "aria-expanded": "false" });
+  toggle.setAttribute("aria-label", `Edit ${label} source`);
+  toggle.title = `Edit ${label} source`;
+  toggle.textContent = inline ? "✎" : "Edit source";
+  toggle.addEventListener("mousedown", (e) => e.preventDefault());
+  const box = h$1(inline ? "span" : "div", renderCls);
+  const input = field === "input" ? h$1("input", srcCls, { type: "text", autocomplete: "off" }) : h$1("textarea", srcCls);
+  input.spellcheck = false;
+  input.hidden = true;
+  input.setAttribute("aria-label", `${label} source`);
+  if (inline) dom.append(box, input, toggle);
+  else {
+    const head = h$1("div", "mdx-node-head");
+    const lab = h$1("span", "mdx-node-label");
+    lab.textContent = label;
+    head.append(lab, toggle);
+    dom.append(head, box, input);
+  }
+  const pos = () => {
+    const p = getPos();
+    return typeof p === "number" ? p : null;
+  };
+  const valueOfNode = () => readSrc(cur);
+  function commit() {
+    clearTimeout(timer);
+    timer = null;
+    const p = pos();
+    if (p === null || destroyed) return;
+    const raw = input.value;
+    if (raw === valueOfNode()) return;
+    const next = commitValue(raw);
+    const { state: state2, view } = editor2;
+    if (next === null) {
+      view.dispatch(state2.tr.delete(p, p + cur.nodeSize));
+      return;
+    }
+    view.dispatch(state2.tr.setNodeMarkup(p, void 0, { ...cur.attrs, [attr]: next }));
+  }
+  function schedule() {
+    clearTimeout(timer);
+    timer = setTimeout(commit, DEBOUNCE_MS$2);
+  }
+  function setOpen(on, { focus: focus2 = true, select = false } = {}) {
+    if (on === isOpen) return;
+    isOpen = on;
+    dom.classList.toggle("mdx-editing", on);
+    input.hidden = !on;
+    toggle.setAttribute("aria-expanded", String(on));
+    if (!inline) toggle.textContent = on ? "Done" : "Edit source";
+    if (on) {
+      input.value = valueOfNode();
+      if (!inline) input.rows = Math.max(3, Math.min(20, input.value.split("\n").length + 1));
+      if (focus2) {
+        input.focus();
+        if (select) input.select();
+      }
+    } else {
+      commit();
+    }
+  }
+  function close2(refocus) {
+    if (!isOpen) return;
+    const p = pos();
+    setOpen(false);
+    if (p !== null) {
+      try {
+        const after = Math.min(editor2.state.doc.content.size, p + (editor2.state.doc.nodeAt(p)?.nodeSize ?? 1));
+        editor2.view.dispatch(editor2.state.tr.setSelection(TextSelection.near(editor2.state.doc.resolve(after), 1)));
+      } catch {
+      }
+      editor2.view.focus();
+    }
+  }
+  toggle.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isOpen) close2();
+    else setOpen(true);
+  });
+  box.addEventListener("click", () => {
+    if (!isOpen) setOpen(true, { select: inline });
+  });
+  input.addEventListener("input", schedule);
+  input.addEventListener("blur", () => {
+    if (isOpen) {
+      if (inline) setOpen(false);
+      else commit();
+    }
+  });
+  const NATIVE_CHORD = /^(z|y|a|c|v|x|arrowleft|arrowright|arrowup|arrowdown|home|end|backspace|delete|enter| )$/;
+  input.addEventListener("keydown", (e) => {
+    const chord = (e.ctrlKey || e.metaKey) && !e.altKey;
+    if (chord && !NATIVE_CHORD.test((e.key || "").toLowerCase())) {
+      commit();
+      return;
+    }
+    e.stopPropagation();
+    if (e.key === "Escape") {
+      e.preventDefault();
+      input.value = valueOfNode();
+      close2();
+    } else if (e.key === "Enter" && onKeyEnter && onKeyEnter(e)) {
+      e.preventDefault();
+      close2();
+    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      close2();
+    }
+  });
+  async function render2(force = false) {
+    const theme = themeOf(editor2);
+    const key = `${theme}\0${valueOfNode()}`;
+    if (!force && key === lastKey) return;
+    lastKey = key;
+    const seq = ++renderSeq;
+    const tmp = h$1(inline ? "span" : "div");
+    const res = await doRender(tmp, valueOfNode(), theme, cur);
+    if (destroyed || seq !== renderSeq) return;
+    box.replaceChildren(...tmp.childNodes);
+    dom.classList.toggle("mdx-has-error", !res.ok);
+    dom.dataset.mdxRendered = res.ok ? "ok" : "error";
+  }
+  const ctrl = {
+    flush() {
+      if (isOpen && input.value !== valueOfNode()) commit();
+    },
+    rerender() {
+      render2(true);
+    },
+    open() {
+      setOpen(true, { select: inline });
+    }
+  };
+  regFor(editor2).add(ctrl);
+  ctrlOfDom.set(dom, ctrl);
+  queueMicrotask(() => {
+    if (!destroyed) render2(true);
+  });
+  return {
+    dom,
+    update(n) {
+      if (n.type !== cur.type) return false;
+      cur = n;
+      if (isOpen && document.activeElement !== input && input.value !== valueOfNode()) input.value = valueOfNode();
+      else if (!isOpen) input.value = valueOfNode();
+      render2();
+      return true;
+    },
+    selectNode() {
+      dom.classList.add("ProseMirror-selectednode");
+    },
+    deselectNode() {
+      dom.classList.remove("ProseMirror-selectednode");
+    },
+    stopEvent(e) {
+      const t = e.target;
+      return !!(t && (t === input || t === toggle || t.closest && t.closest(".mdx-node-head")));
+    },
+    ignoreMutation: () => true,
+    destroy() {
+      destroyed = true;
+      clearTimeout(timer);
+      registry.get(editor2)?.delete(ctrl);
+    }
+  };
+}
+const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})([^\n]*)/;
+const isMermaidLang = (lang) => /^mermaid$/i.test(lang || "");
+function mermaidFromToken(token) {
+  if (!token || !isMermaidLang(token.lang)) return null;
+  const m2 = FENCE_OPEN.exec(token.raw || "");
+  if (!m2) return null;
+  return { code: token.text || "", fence: m2[1], info: m2[2].trim() || "mermaid" };
+}
+const MermaidBlock = Node$1.create({
+  name: "mermaidBlock",
+  group: "block",
+  atom: true,
+  selectable: true,
+  draggable: false,
+  addKeyboardShortcuts() {
+    return { Enter: () => enterOpens(this.editor) };
+  },
+  addAttributes() {
+    return { code: { default: "" }, fence: { default: "```" }, info: { default: "mermaid" } };
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-mdx-node="mermaid"]', getAttrs: (el) => ({ code: el.getAttribute("data-code") || "" }), priority: 60 }];
+  },
+  renderHTML({ node }) {
+    return ["div", { "data-mdx-node": "mermaid", "data-code": node.attrs.code }, ["pre", {}, node.attrs.code]];
+  },
+  renderText: ({ node }) => node.attrs.code,
+  addNodeView() {
+    const editor2 = this.editor;
+    return ({ node, getPos }) => makeView({
+      node,
+      editor: editor2,
+      getPos,
+      kind: "mermaid",
+      label: "Mermaid",
+      field: "textarea",
+      inline: false,
+      attr: "code",
+      cls: "mdx-mermaid",
+      srcCls: "mdx-mermaid-source",
+      renderCls: "mdx-mermaid-render",
+      readSrc: (n) => n.attrs.code,
+      commitValue: (v2) => v2,
+      doRender: (box, code, theme) => renderMermaid(box, code, theme)
+    });
+  },
+  // ```mermaid fences arrive as marked `code` tokens: SafeCodeBlock (extensions.js) routes them here via mermaidFromToken().
+  renderMarkdown: (node) => {
+    const a = node.attrs;
+    const code = a.code || "";
+    let longest = 2;
+    for (const m2 of code.matchAll(/[`~]+/g)) longest = Math.max(longest, m2[0].length);
+    const ch = (a.fence || "`")[0] === "~" ? "~" : "`";
+    const fence = ch.repeat(Math.max(3, (a.fence || "").length, longest + 1));
+    return `${fence}${a.info || "mermaid"}
+${code ? code + "\n" : ""}${fence}`;
+  },
+  addCommands() {
+    return {
+      insertMermaid: (code = MERMAID_SAMPLE) => ({ chain }) => chain().insertContent([{ type: "mermaidBlock", attrs: { code } }, { type: "paragraph" }]).run()
+    };
+  },
+  addProseMirrorPlugins() {
+    return [new Plugin({
+      key: new PluginKey("mdxMermaidPaste"),
+      props: {
+        // Pasting bare diagram text (flowchart/graph/sequenceDiagram/... on the first line, multi-line) wraps it in a
+        // mermaid block. Shift+paste (plain-text paste) skips this; inside code blocks it never applies.
+        handlePaste: (view, event) => {
+          if (view.input && view.input.shiftKey) return false;
+          const text = event.clipboardData && event.clipboardData.getData("text/plain");
+          if (!text || !looksLikeMermaid(text)) return false;
+          const { $from } = view.state.selection;
+          if ($from.parent.type.spec.code) return false;
+          const code = text.replace(/\r\n?/g, "\n").replace(/^\uFEFF/, "").replace(/\s+$/, "");
+          return this.editor.chain().insertContent([{ type: "mermaidBlock", attrs: { code } }, { type: "paragraph" }]).run();
+        }
+      }
+    })];
+  }
+});
+const inlineMathRule = new InputRule({
+  // typing the closing $ of `$x$` converts it (same pandoc rule; the "not followed by a digit" part is checked at parse time)
+  find: /(?<![\\$])\$(?![\s$])([^$\n`]*?[^\s$\\`])\$$/,
+  handler: ({ state: state2, range, match }) => {
+    const type = state2.schema.nodes.mathInline;
+    if (!type || !matchInlineMath(match[0].slice(match[0].indexOf("$")))) return null;
+    state2.tr.replaceWith(range.from, range.to, type.create({ src: match[1], delim: "$" }));
+    return void 0;
+  }
+});
+const MathInline = Node$1.create({
+  name: "mathInline",
+  group: "inline",
+  inline: true,
+  atom: true,
+  selectable: true,
+  addKeyboardShortcuts() {
+    return { Enter: () => enterOpens(this.editor) };
+  },
+  addAttributes() {
+    return { src: { default: "" }, delim: { default: "$" } };
+  },
+  parseHTML() {
+    return [{ tag: 'span[data-mdx-node="math-inline"]', getAttrs: (el) => ({ src: el.getAttribute("data-src") || "", delim: el.getAttribute("data-delim") || "$" }), priority: 60 }];
+  },
+  renderHTML({ node }) {
+    return ["span", { "data-mdx-node": "math-inline", "data-src": node.attrs.src, "data-delim": node.attrs.delim }, node.attrs.delim + node.attrs.src + node.attrs.delim];
+  },
+  renderText: ({ node }) => node.attrs.delim + node.attrs.src + node.attrs.delim,
+  addNodeView() {
+    const editor2 = this.editor;
+    return ({ node, getPos }) => makeView({
+      node,
+      editor: editor2,
+      getPos,
+      kind: "math-inline",
+      label: "math",
+      field: "input",
+      inline: true,
+      attr: "src",
+      cls: "mdx-math mdx-math-inline",
+      srcCls: "mdx-math-source",
+      renderCls: "mdx-math-render",
+      readSrc: (n) => n.attrs.src,
+      commitValue: (v2) => {
+        const s = sanitizeInlineMath(v2);
+        return s ? s : null;
+      },
+      doRender: (box, tex) => renderMath(box, tex, false),
+      onKeyEnter: () => true
+    });
+  },
+  markdownTokenName: "mathInline",
+  markdownTokenizer: {
+    name: "mathInline",
+    level: "inline",
+    start: (src) => {
+      for (let i = src.indexOf("$"); i >= 0; i = src.indexOf("$", i + 1)) {
+        let b2 = 0;
+        while (src[i - 1 - b2] === "\\") b2++;
+        if (b2 % 2 === 0) return i;
+      }
+      return -1;
+    },
+    tokenize: (src) => {
+      const m2 = matchInlineMath(src);
+      return m2 ? { type: "mathInline", raw: m2.raw, text: m2.src, delim: m2.delim } : void 0;
+    }
+  },
+  parseMarkdown: (token, helpers) => helpers.createNode("mathInline", { src: token.text ?? "", delim: token.delim || "$" }),
+  renderMarkdown: (node) => {
+    const d = node.attrs.delim === "$$" ? "$$" : "$";
+    return `${d}${sanitizeInlineMath(node.attrs.src)}${d}`;
+  },
+  addInputRules() {
+    return [inlineMathRule];
+  },
+  addCommands() {
+    return {
+      insertMathInline: (src = "x^2") => ({ chain }) => chain().insertContent({ type: "mathInline", attrs: { src, delim: "$" } }).run()
+    };
+  }
+});
+const MathBlock = Node$1.create({
+  name: "mathBlock",
+  group: "block",
+  atom: true,
+  selectable: true,
+  draggable: false,
+  addKeyboardShortcuts() {
+    return { Enter: () => enterOpens(this.editor) };
+  },
+  addAttributes() {
+    return { src: { default: "" } };
+  },
+  parseHTML() {
+    return [{ tag: 'div[data-mdx-node="math-block"]', getAttrs: (el) => ({ src: el.getAttribute("data-src") || "" }), priority: 60 }];
+  },
+  renderHTML({ node }) {
+    return ["div", { "data-mdx-node": "math-block", "data-src": node.attrs.src }, `$$${node.attrs.src}$$`];
+  },
+  renderText: ({ node }) => `$$${node.attrs.src}$$`,
+  addNodeView() {
+    const editor2 = this.editor;
+    return ({ node, getPos }) => makeView({
+      node,
+      editor: editor2,
+      getPos,
+      kind: "math-block",
+      label: "Math",
+      field: "textarea",
+      inline: false,
+      attr: "src",
+      cls: "mdx-math mdx-math-block",
+      srcCls: "mdx-math-source",
+      renderCls: "mdx-math-render",
+      readSrc: (n) => n.attrs.src,
+      commitValue: (v2) => {
+        const s = sanitizeBlockMath(v2);
+        return s.trim() ? s : null;
+      },
+      doRender: (box, tex) => renderMath(box, tex, true)
+    });
+  },
+  markdownTokenName: "mathBlock",
+  markdownTokenizer: {
+    name: "mathBlock",
+    level: "block",
+    start: (src) => blockMathStart(src),
+    tokenize: (src) => {
+      const m2 = matchBlockMath(src);
+      return m2 ? { type: "mathBlock", raw: m2.raw, text: m2.src } : void 0;
+    }
+  },
+  parseMarkdown: (token, helpers) => helpers.createNode("mathBlock", { src: token.text ?? "" }),
+  renderMarkdown: (node) => {
+    return encodeRaw(`$$${sanitizeBlockMath(node.attrs.src)}$$`);
+  },
+  addCommands() {
+    return {
+      insertMathBlock: (src = "E = mc^2") => ({ chain }) => chain().insertContent([{ type: "mathBlock", attrs: { src } }, { type: "paragraph" }]).run()
+    };
+  }
+});
 const lowlight = createLowlight(grammars);
 const SafeCodeBlock = src_default.extend({
+  // fenced ```mermaid blocks become mermaidBlock nodes (verbatim source + original fence); everything else is a normal code block
+  parseMarkdown: (token, h2) => {
+    const mm = mermaidFromToken(token);
+    if (mm) return h2.createNode("mermaidBlock", mm);
+    if (token.raw && !token.raw.startsWith("```") && !token.raw.startsWith("~~~") && token.codeBlockStyle !== "indented") return [];
+    return h2.createNode("codeBlock", { language: token.lang || null }, token.text ? [h2.createTextNode(token.text)] : []);
+  },
   renderMarkdown: (node, h2) => {
     const lang = node.attrs && node.attrs.language || "";
     const body = node.content ? h2.renderChildren(node.content) : "";
@@ -44614,6 +45444,9 @@ function getExtensions({ placeholder = "Start writing…", withPlaceholder = tru
     TaskList,
     TaskItem.configure({ nested: true, HTMLAttributes: { "data-type": "taskItem" } }),
     src_default$2.configure({ inline: false, allowBase64: true }),
+    MermaidBlock,
+    MathInline,
+    MathBlock,
     RawBlock,
     RawInline,
     RawHtmlBlockParser,
@@ -44637,6 +45470,9 @@ const ICONS = {
   image: "Image",
   table: "Table",
   hr: "―",
+  diagram: "Diagram",
+  mathInline: "∑ Math",
+  mathBlock: "∑ Block",
   undo: "↶",
   redo: "↷",
   source: "Markdown",
@@ -44784,6 +45620,14 @@ function createToolbar(editor2, { onToggleSource, isSourceMode }) {
   btn({ key: "link", title: "Link (Ctrl+K)", run: () => openPop("link"), active: () => editor2.isActive("link") });
   btn({ key: "image", title: "Insert image by URL", run: () => openPop("image") });
   sep();
+  btn({ key: "diagram", title: "Insert Mermaid diagram", run: () => insertNodeAndOpen(editor2, "mermaidBlock", { code: MERMAID_SAMPLE }, { block: true }), can: () => editor2.can().insertContent({ type: "mermaidBlock" }) });
+  btn({ key: "mathInline", title: "Insert inline math ($…$)", run: () => {
+    const { from: from2, to, empty: empty2 } = editor2.state.selection;
+    const sel2 = empty2 ? "" : editor2.state.doc.textBetween(from2, to, " ").trim();
+    insertNodeAndOpen(editor2, "mathInline", { src: sel2 && !/[$\n]/.test(sel2) ? sel2 : "x^2", delim: "$" }, { block: false });
+  } });
+  btn({ key: "mathBlock", title: "Insert block math ($$…$$)", run: () => insertNodeAndOpen(editor2, "mathBlock", { src: "E = mc^2" }, { block: true }) });
+  sep();
   btn({ key: "table", title: "Insert table (3×3)", run: () => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), can: () => editor2.can().insertTable() });
   const inTable = () => editor2.isActive("table");
   btn({ key: "addRow", title: "Add row below", run: () => chain().addRowAfter().run(), can: inTable });
@@ -44849,10 +45693,23 @@ function createEditor(containerEl, { markdown: markdown2 = "", onChange: onChang
   let baseMd = markdown2 == null ? "" : String(markdown2);
   let baseDoc = null;
   let savedMd = baseMd;
-  const serialize = () => normalizeMarkdownOutput(editor2.getMarkdown());
-  const docUnchanged = () => baseDoc !== null && editor2.state.doc.eq(baseDoc);
+  const serialize = () => {
+    flushEdits(editor2);
+    return normalizeMarkdownOutput(editor2.getMarkdown());
+  };
+  const docUnchanged = () => {
+    flushEdits(editor2);
+    return baseDoc !== null && editor2.state.doc.eq(baseDoc);
+  };
   const wysMarkdown = () => docUnchanged() ? baseMd : serialize();
-  const getMarkdown = () => sourceMode ? src.value : wysMarkdown();
+  let srcExact = "", srcNorm = "";
+  const setSrc = (text) => {
+    srcExact = text;
+    src.value = text;
+    srcNorm = src.value;
+  };
+  const srcText = () => src.value === srcNorm ? srcExact : src.value;
+  const getMarkdown = () => sourceMode ? srcText() : wysMarkdown();
   function schedule() {
     clearTimeout(timer);
     timer = setTimeout(() => {
@@ -44904,6 +45761,7 @@ function createEditor(containerEl, { markdown: markdown2 = "", onChange: onChang
     }
   });
   const onKey = (e) => {
+    if (e.target && e.target.closest && e.target.closest(".mdx-node")) return;
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "k" && !sourceMode) {
       e.preventDefault();
       toolbar.openLink();
@@ -44912,7 +45770,7 @@ function createEditor(containerEl, { markdown: markdown2 = "", onChange: onChang
   wys.addEventListener("keydown", onKey);
   function setMarkdown(md) {
     md = md == null ? "" : String(md);
-    if (sourceMode) src.value = md;
+    if (sourceMode) setSrc(md);
     else loadIntoEditor(md);
     if (sourceMode) loadIntoEditor(md);
     savedMd = md;
@@ -44935,14 +45793,14 @@ function createEditor(containerEl, { markdown: markdown2 = "", onChange: onChang
     on = !!on;
     if (on === sourceMode) return;
     if (on) {
-      src.value = wysMarkdown();
+      setSrc(wysMarkdown());
       sourceMode = true;
       wys.hidden = true;
       src.hidden = false;
       root.classList.add("mdx-source-mode");
       src.focus();
     } else {
-      const text = src.value;
+      const text = srcText();
       if (text !== wysMarkdown()) loadIntoEditor(text);
       sourceMode = false;
       src.hidden = true;
@@ -44961,7 +45819,9 @@ function createEditor(containerEl, { markdown: markdown2 = "", onChange: onChang
     getWarnings: () => warnings.slice(),
     setTheme(t) {
       root.dataset.theme = t === "dark" ? "dark" : "light";
+      refreshTheme(editor2);
     },
+    // diagrams re-render with the matching mermaid theme
     focus() {
       sourceMode ? src.focus() : editor2.commands.focus();
     },
@@ -46457,3 +47317,8 @@ window.__mdwe = { state, get editor() {
 }, set driveApi(a) {
   driveApi = a;
 } };
+export {
+  __vitePreload as _,
+  commonjsGlobal as c,
+  getDefaultExportFromCjs as g
+};

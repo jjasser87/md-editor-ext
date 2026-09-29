@@ -1,7 +1,9 @@
+import { insertNodeAndOpen, MERMAID_SAMPLE } from './mermaid-math.js';
 // Toolbar for the editor. Pure DOM, no innerHTML with dynamic content, no inline handlers (CSP-safe).
 const ICONS = {
   bold: 'B', italic: 'I', strike: 'S', code: '</>', codeBlock: '{ }', bullet: '• List', ordered: '1. List',
   task: '☑ Tasks', quote: '❝', link: 'Link', image: 'Image', table: 'Table', hr: '―',
+  diagram: 'Diagram', mathInline: '∑ Math', mathBlock: '∑ Block',
   undo: '↶', redo: '↷', source: 'Markdown',
   addRow: '+Row', delRow: '−Row', addCol: '+Col', delCol: '−Col', delTable: '✕Tbl',
 };
@@ -121,6 +123,14 @@ export function createToolbar(editor, { onToggleSource, isSourceMode }) {
 
   btn({ key: 'link', title: 'Link (Ctrl+K)', run: () => openPop('link'), active: () => editor.isActive('link') });
   btn({ key: 'image', title: 'Insert image by URL', run: () => openPop('image') });
+  sep();
+  btn({ key: 'diagram', title: 'Insert Mermaid diagram', run: () => insertNodeAndOpen(editor, 'mermaidBlock', { code: MERMAID_SAMPLE }, { block: true }), can: () => editor.can().insertContent({ type: 'mermaidBlock' }) });
+  btn({ key: 'mathInline', title: 'Insert inline math ($…$)', run: () => {
+    const { from, to, empty } = editor.state.selection;
+    const sel = empty ? '' : editor.state.doc.textBetween(from, to, ' ').trim();
+    insertNodeAndOpen(editor, 'mathInline', { src: sel && !/[$\n]/.test(sel) ? sel : 'x^2', delim: '$' }, { block: false });
+  } });
+  btn({ key: 'mathBlock', title: 'Insert block math ($$…$$)', run: () => insertNodeAndOpen(editor, 'mathBlock', { src: 'E = mc^2' }, { block: true }) });
   sep();
   btn({ key: 'table', title: 'Insert table (3×3)', run: () => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), can: () => editor.can().insertTable() });
   const inTable = () => editor.isActive('table');
