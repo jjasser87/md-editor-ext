@@ -1,0 +1,16 @@
+:root { --bar-bg:#f3f4f6; --bar-fg:#111827; --bar-border:#d1d5db; --btn-bg:#fff; --accent:#2563eb; }
+:root[data-theme="dark"] { --bar-bg:#1f2937; --bar-fg:#f3f4f6; --bar-border:#374151; --btn-bg:#111827; --accent:#60a5fa; color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; font: 14px/1.4 system-ui, sans-serif; background: var(--bar-bg); color: var(--bar-fg); }
+#filebar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 12px; background:var(--bar-bg); border-bottom:1px solid var(--bar-border); }
+#filebar .group { display:flex; align-items:center; gap:6px; }
+#filebar button { padding:5px 10px; border:1px solid var(--bar-border); background:var(--btn-bg); color:var(--bar-fg); border-radius:6px; cursor:pointer; font:inherit; }
+#filebar button:hover { border-color: var(--accent); }
+#filebar button[aria-pressed="true"] { background: var(--accent); color:#fff; border-color: var(--accent); }
+#filename { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; text-align:center; }
+#filename.dirty::after { content:" •"; color: var(--accent); }
+#status { opacity:.7; font-size:12px; }
+#editor-host { flex:1; min-height:0; overflow:auto; }
+#dropzone { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(37,99,235,.85); color:#fff; font:600 24px system-ui; z-index:99; }
+#dropzone[hidden] { display:none; }

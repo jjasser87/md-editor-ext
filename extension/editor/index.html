@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Markdown Editor</title>
+  <script type="module" crossorigin src="./assets/index-kxyrYKKp.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BbxOt_DY.css">
+</head>
+<body>
+  <header id="filebar">
+    <div class="group">
+      <button id="btn-open" title="Open (Ctrl+O)">Open</button>
+      <button id="btn-save" title="Save (Ctrl+S)">Save</button>
+      <button id="btn-saveas" title="Save as (Ctrl+Shift+S)">Save as</button>
+      <button id="btn-download" title="Download a copy">Download</button>
+    </div>
+    <div id="filename" title="Current file">Untitled.md</div>
+    <div class="group">
+      <span id="status" aria-live="polite"></span>
+      <button id="btn-theme" title="Toggle light/dark">Theme</button>
+    </div>
+  </header>
+  <main id="editor-host"></main>
+  <div id="dropzone" hidden>Drop a .md file to open it</div>
+  <input id="fallback-input" type="file" accept=".md,.markdown,.mdown,.txt,text/markdown,text/plain" hidden>
+</body>
+</html>

@@ -1,0 +1,4 @@
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; font: 14px system-ui, sans-serif; }
+header { padding: 6px 10px; display: flex; gap: 8px; align-items: center; background: #eee; }
+#host { flex: 1; min-height: 0; }
