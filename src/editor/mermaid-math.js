@@ -10,7 +10,7 @@
 import { Node, InputRule } from '@tiptap/core';
 import { Plugin, PluginKey, TextSelection, NodeSelection } from '@tiptap/pm/state';
 import { encodeRaw } from './markdown-fixes.js';
-import { renderMermaid, renderMath, errorEl } from './renderers.js';
+import { renderMermaid, renderMath, errorEl, renderMermaidSvg, getCachedMermaidSvg } from './renderers.js';
 import {
   matchInlineMath, matchBlockMath, blockMathStart, sanitizeInlineMath, sanitizeBlockMath, looksLikeMermaid,
 } from './math-syntax.js';
@@ -26,6 +26,18 @@ const regFor = (editor) => { let s = registry.get(editor); if (!s) registry.set(
 export function flushEdits(editor) { const s = registry.get(editor); if (s) for (const c of [...s]) c.flush(); }
 /** Re-render all diagrams for the editor's current theme (call after data-theme changed). */
 export function refreshTheme(editor) { const s = registry.get(editor); if (s) for (const c of [...s]) c.rerender(); }
+// ---- printing (see EDITOR_NOTES.md "Print") ----
+/** Resolves when every node view has finished its (async) render and - in the dark theme - the light SVG variant of every rendered diagram is cached. Never rejects. */
+export async function prepareNodesForPrint(editor) {
+  flushEdits(editor);
+  const ctrls = () => [...(registry.get(editor) || [])];
+  for (let i = 0; i < 5; i++) { await Promise.all(ctrls().map((c) => c.whenRendered())); if (ctrls().every((c) => c.settled())) break; }
+  await Promise.all(ctrls().map((c) => c.prepareLight()));
+}
+/** SYNCHRONOUS: swap the dark diagrams to their cached light SVG (class mdx-print-fallback when a light SVG is not cached). Idempotent. */
+export function swapNodesForPrint(editor) { const s = registry.get(editor); if (s) for (const c of [...s]) c.printSwap(); }
+/** SYNCHRONOUS: put back exactly the DOM nodes that were on screen before swapNodesForPrint. Idempotent. */
+export function restoreNodesAfterPrint(editor) { const s = registry.get(editor); if (s) for (const c of [...s]) c.printRestore(); }
 /** Open the source editor of the node view rendered at doc position `pos` (used by the insert actions). */
 export function openSourceAt(editor, pos) {
   const dom = editor.view.nodeDOM(pos);
@@ -153,7 +165,12 @@ function makeView({ node, editor, getPos, kind, label, field, cls, srcCls, rende
     else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); close(true); }
   });
 
-  async function render(force = false) {
+  let renderP = Promise.resolve(), settledSeq = 0;
+  let saved = null;            // print: the on-screen child nodes of `box` while the light variant is shown
+  let lightTimer = null;
+  function render(force = false) { const p = renderNow(force); renderP = p; return p; }
+  function dropPrintSwap() { saved = null; box.classList.remove('mdx-print-fallback'); }
+  async function renderNow(force = false) {
     const theme = themeOf(editor);
     const key = `${theme}\0${valueOfNode()}`;
     if (!force && key === lastKey) return;
@@ -162,18 +179,45 @@ function makeView({ node, editor, getPos, kind, label, field, cls, srcCls, rende
     const tmp = h(inline ? 'span' : 'div');
     const res = await doRender(tmp, valueOfNode(), theme, cur);
     if (destroyed || seq !== renderSeq) return;
+    dropPrintSwap();
     box.replaceChildren(...tmp.childNodes);
     dom.classList.toggle('mdx-has-error', !res.ok);
     dom.dataset.mdxRendered = res.ok ? 'ok' : 'error';
+    settledSeq = seq;
+    if (kind === 'mermaid' && res.ok && theme === 'dark') scheduleLight();
+  }
+  const isDarkMermaid = () => kind === 'mermaid' && themeOf(editor) === 'dark' && !!box.querySelector('svg') && dom.dataset.mdxRendered === 'ok';
+  /** dark editor: pre-render the light variant when the browser is idle so beforeprint can swap synchronously */
+  function scheduleLight() {
+    clearTimeout(lightTimer);
+    lightTimer = setTimeout(() => {
+      lightTimer = null;
+      const go = () => { if (!destroyed && isDarkMermaid()) renderMermaidSvg(valueOfNode(), 'light'); };
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 4000 }); else go();
+    }, 1500);
   }
 
   const ctrl = {
+    async whenRendered() { let p; do { p = renderP; try { await p; } catch { /* render never throws */ } } while (p !== renderP); },
+    settled() { return settledSeq === renderSeq; },
+    async prepareLight() { if (isDarkMermaid()) await renderMermaidSvg(valueOfNode(), 'light'); },
+    printSwap() {
+      if (saved || !isDarkMermaid()) return;
+      const light = getCachedMermaidSvg(valueOfNode(), 'light');
+      saved = [...box.childNodes];
+      if (light) { box.replaceChildren(); box.innerHTML = light; } // the dark nodes stay referenced in `saved`
+      else box.classList.add('mdx-print-fallback');                 // not cached: CSS invert fallback
+    },
+    printRestore() {
+      if (saved) { box.replaceChildren(...saved); }
+      saved = null; box.classList.remove('mdx-print-fallback');
+    },
     flush() { if (isOpen && input.value !== valueOfNode()) commit(); },
     rerender() { render(true); },
     open() { setOpen(true, { select: inline }); },
   };
   regFor(editor).add(ctrl); ctrlOfDom.set(dom, ctrl);
-  queueMicrotask(() => { if (!destroyed) render(true); });
+  renderP = Promise.resolve().then(() => (destroyed ? undefined : render(true)));
 
   return {
     dom,
@@ -189,7 +233,7 @@ function makeView({ node, editor, getPos, kind, label, field, cls, srcCls, rende
     deselectNode() { dom.classList.remove('ProseMirror-selectednode'); },
     stopEvent(e) { const t = e.target; return !!(t && (t === input || t === toggle || (t.closest && t.closest('.mdx-node-head')))); },
     ignoreMutation: () => true,
-    destroy() { destroyed = true; clearTimeout(timer); registry.get(editor)?.delete(ctrl); },
+    destroy() { destroyed = true; clearTimeout(timer); clearTimeout(lightTimer); registry.get(editor)?.delete(ctrl); },
   };
 }
 

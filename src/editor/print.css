@@ -1,0 +1,120 @@
+/* Print / Save-as-PDF stylesheet (Editor Dev). Prints ONLY the rendered document, always in light colors.
+   Loaded after editor.css (import order in index.js). Page-shell chrome is hidden by the generic rule below, so it keeps working
+   even if the shell gains new elements. See EDITOR_NOTES.md "Print". */
+@page { margin: 18mm; }
+
+/* the editor's own print-only helper is invisible on screen */
+.mdx-print-source { display: none; }
+
+@media print {
+  /* ---- 0. page shell: hide everything that is neither an ancestor of the editor nor inside it ---- */
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #000; color-scheme: light !important; }
+  body { display: block !important; }
+  body *:not(:has(.mdx-root)):not(.mdx-root):not(.mdx-root *) { display: none !important; }
+  /* named hooks that exist in src/page + src/drive-ui today (redundant with the rule above, kept as documentation / fallback) */
+  #filebar, #dropzone, #drive-status, #status, #fallback-input, .gdui-overlay, .gdui-dialog, .gdui-status, .gdui-toast, .no-print, [data-no-print] { display: none !important; }
+  body[data-printing] #filebar { display: none !important; }
+
+  /* ---- 1. light palette regardless of data-theme ---- */
+  .mdx-root, .mdx-root[data-theme="dark"], .mdx-root[data-theme="light"] {
+    --mdx-bg: #ffffff; --mdx-fg: #000000; --mdx-muted: #555b63; --mdx-border: #c9ced4;
+    --mdx-toolbar-bg: #f6f8fa; --mdx-btn-hover: #e6eaef; --mdx-btn-active: #d0e2ff; --mdx-accent: #0550ae;
+    --mdx-code-bg: #f3f4f6; --mdx-code-fg: #1f2328; --mdx-quote: #4b535c; --mdx-th-bg: #eceff2; --mdx-sel: transparent;
+    --mdx-hl-keyword: #cf222e; --mdx-hl-string: #0a3069; --mdx-hl-comment: #6e7781;
+    --mdx-hl-number: #0550ae; --mdx-hl-title: #8250df; --mdx-hl-attr: #116329;
+    color-scheme: light;
+  }
+  .mdx-root .ProseMirror .mdx-node, .mdx-root[data-theme="dark"] .ProseMirror .mdx-node { --mdx-err: #cf222e; }
+  .mdx-root, .mdx-root * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* ---- 2. layout: full page box, no editor chrome ---- */
+  .mdx-root { display: block !important; height: auto !important; min-height: 0 !important; overflow: visible !important; background: #fff !important; color: #000 !important; font-size: 11pt; line-height: 1.5; }
+  .mdx-body { overflow: visible !important; height: auto !important; flex: none !important; }
+  .mdx-root.mdx-source-mode .mdx-body { overflow: visible !important; }
+  .mdx-wysiwyg { max-width: none !important; width: auto !important; margin: 0 !important; padding: 0 !important; }
+  .mdx-root .ProseMirror { min-height: 0 !important; outline: none !important; caret-color: transparent; }
+
+  /* ---- 3. hidden UI ---- */
+  .mdx-toolbar, .mdx-popover, .mdx-sep, .mdx-btn, .mdx-node-toggle, .mdx-node-head, .mdx-raw-label,
+  .mdx-root textarea, .mdx-root input[type="text"], .mdx-source,
+  .ProseMirror-gapcursor, .ProseMirror-trailingBreak, img.ProseMirror-separator, .ProseMirror-widget:not(.mdx-keep-print) { display: none !important; }
+  .ProseMirror p.is-editor-empty::before, .ProseMirror p.is-empty::before { content: none !important; display: none !important; }
+  .ProseMirror p:has(> br.ProseMirror-trailingBreak:only-child) { display: none !important; }
+  .ProseMirror .selectedCell::after { display: none !important; }
+  .ProseMirror ::selection, .ProseMirror-hideselection *::selection { background: transparent; }
+  .ProseMirror .ProseMirror-selectednode, .ProseMirror img.ProseMirror-selectednode, .ProseMirror hr.ProseMirror-selectednode,
+  .ProseMirror .mdx-node.ProseMirror-selectednode, .ProseMirror .mdx-raw.ProseMirror-selectednode { outline: none !important; }
+  .mdx-root *:focus, .mdx-root *:focus-visible { outline: none !important; box-shadow: none !important; }
+  .ProseMirror span.mdx-math-inline, .ProseMirror span.mdx-math-inline:hover { background: none !important; }
+
+  /* ---- 4. source mode: the textarea prints as a pre-wrapped text mirror ---- */
+  .mdx-root.mdx-source-mode .mdx-wysiwyg { display: none !important; }
+  .mdx-root.mdx-source-mode .mdx-print-source {
+    display: block !important; margin: 0; padding: 0; background: none; color: #000; border: 0;
+    font: 9.5pt/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; tab-size: 2;
+  }
+
+  /* ---- 5. typography ---- */
+  .ProseMirror p { orphans: 3; widows: 3; }
+  .ProseMirror a { color: #0550ae; text-decoration: underline; }
+  .ProseMirror h1, .ProseMirror h2, .ProseMirror h3, .ProseMirror h4, .ProseMirror h5, .ProseMirror h6 { break-after: avoid; page-break-after: avoid; break-inside: avoid; }
+  .ProseMirror h1 + *, .ProseMirror h2 + *, .ProseMirror h3 + *, .ProseMirror h4 + *, .ProseMirror h5 + *, .ProseMirror h6 + * { break-before: avoid; }
+  .ProseMirror mark { background: #fff3a3; color: #000; }
+  .ProseMirror hr { break-after: avoid; }
+
+  /* ---- 6. code ---- */
+  .ProseMirror pre { break-inside: auto; orphans: 3; widows: 3; overflow: visible !important; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; font-size: 9.5pt; border: 1px solid var(--mdx-border); border-radius: 4px; }
+  .ProseMirror pre code { white-space: pre-wrap !important; word-break: break-word; overflow-wrap: anywhere; font-size: 9.5pt !important; }
+  .ProseMirror code { font-size: .88em; }
+
+  /* ---- 7. tables ---- */
+  /* BUG-32: fixed layout + width 100% => every column is at most 1/n of the printable width and unbreakable tokens (URLs, hashes, ids,
+     inline code) wrap with overflow-wrap:anywhere instead of pushing the table past the page edge (where it was silently clipped).
+     ProseMirror/TipTap set inline widths (table min-width, <col style="min-width">, cell colwidth), hence the !important overrides. */
+  .ProseMirror .tableWrapper, .ProseMirror .tableWrapper > * { overflow: visible !important; max-width: 100% !important; }
+  .ProseMirror .tableWrapper { width: 100% !important; }
+  .ProseMirror table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed !important; overflow: visible !important; }
+  .ProseMirror table colgroup, .ProseMirror table col { width: auto !important; min-width: 0 !important; max-width: none !important; }
+  .ProseMirror th, .ProseMirror td { min-width: 0 !important; max-width: 100% !important; width: auto !important; overflow: visible !important; word-break: break-word; overflow-wrap: anywhere !important; }
+  .ProseMirror th *, .ProseMirror td * { min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
+  .ProseMirror th code, .ProseMirror td code { white-space: pre-wrap; }
+  .ProseMirror thead { display: table-header-group; }
+  .ProseMirror tfoot { display: table-footer-group; }
+  .ProseMirror tr, .ProseMirror th, .ProseMirror td { break-inside: avoid; page-break-inside: avoid; }
+  .ProseMirror tr:has(> th) { break-after: avoid; page-break-after: avoid; } /* TipTap tables have no <thead>: keep the header row with the first body row */
+  .ProseMirror th { background: var(--mdx-th-bg) !important; }
+
+  /* ---- 8. lists / quotes / images / rules ---- */
+  .ProseMirror li, .ProseMirror ul[data-type="taskList"] > li { break-inside: avoid; page-break-inside: avoid; }
+  .ProseMirror blockquote { break-inside: avoid; page-break-inside: avoid; }
+  .ProseMirror img, .ProseMirror figure { max-width: 100% !important; height: auto; break-inside: avoid; page-break-inside: avoid; }
+  .ProseMirror ul[data-type="taskList"] > li > label { pointer-events: none; }
+  .ProseMirror ul[data-type="taskList"] > li input[type="checkbox"] { display: inline-block !important; pointer-events: none; appearance: auto; width: 1em; height: 1em; accent-color: #1f2328; }
+
+  /* ---- 9. raw chips: verbatim text, subtle monospace ---- */
+  .ProseMirror .mdx-raw-block { border: 0 !important; border-left: 2px solid var(--mdx-border) !important; border-radius: 0 !important; padding: 2px 10px !important; background: var(--mdx-code-bg) !important; break-inside: avoid; }
+  .ProseMirror .mdx-raw-block .mdx-raw-text { overflow: visible !important; font-size: 9pt !important; color: var(--mdx-code-fg); }
+  .ProseMirror .mdx-raw-inline { border: 0 !important; background: var(--mdx-code-bg) !important; color: var(--mdx-code-fg) !important; padding: 0 .2em !important; }
+
+  /* ---- 10. mermaid + math ---- */
+  .ProseMirror div.mdx-node { border: 0 !important; border-radius: 0 !important; background: none !important; break-inside: avoid; page-break-inside: avoid; }
+  .ProseMirror div.mdx-node.mdx-has-error { border: 0 !important; }
+  .ProseMirror .mdx-mermaid-render { padding: 0 !important; overflow: visible !important; text-align: center; }
+  .ProseMirror .mdx-mermaid-render > svg { max-width: 100% !important; max-height: 90vh; width: auto; height: auto; }
+  .ProseMirror .mdx-mermaid-render > svg[style*="max-width"] { width: 100%; }
+  .ProseMirror .mdx-math-block .mdx-math-render { padding: 0 !important; overflow: visible !important; break-inside: avoid; }
+  .ProseMirror span.mdx-math-inline { white-space: normal; }
+  .ProseMirror .mdx-math-inline .mdx-math-render { white-space: nowrap; }
+  .ProseMirror .katex { color: #000; }
+  .ProseMirror .katex-display { break-inside: avoid; overflow: visible !important; }
+  /* failed render: error box + source as plain text */
+  .ProseMirror div.mdx-error { break-inside: avoid; color: #cf222e; background: #fff5f5 !important; border-left: 3px solid #cf222e; }
+  /* light SVG not cached yet (plain Ctrl+P without prepareForPrint): invert the dark diagram as a last resort */
+  .ProseMirror .mdx-mermaid-render.mdx-print-fallback { background: #fff; }
+  .ProseMirror .mdx-mermaid-render.mdx-print-fallback > svg { filter: invert(1) hue-rotate(180deg); }
+
+  /* ---- 11. optional link URLs (editor.setPrintLinks(true) -> data-print-links on .mdx-root; or set it on <body>) ---- */
+  [data-print-links] .ProseMirror a[href^="http://"]::after,
+  [data-print-links] .ProseMirror a[href^="https://"]::after,
+  [data-print-links] .ProseMirror a[href^="mailto:"]::after { content: " (" attr(href) ")"; font-size: .85em; color: #555b63; word-break: break-all; }
+}

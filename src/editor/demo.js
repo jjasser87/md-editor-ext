@@ -45,4 +45,7 @@ const ed = createEditor($('host'), {
 });
 $('theme').onclick = () => { theme = theme === 'light' ? 'dark' : 'light'; ed.setTheme(theme); document.body.style.colorScheme = theme; };
 $('dump').onclick = () => console.log(ed.getMarkdown());
+$('print').onclick = async () => { await ed.prepareForPrint(); window.print(); }; // same call order as the extension's Print button
+$('plinks').onchange = (e) => ed.setPrintLinks(e.target.checked);
+window.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p') { e.preventDefault(); $('print').click(); } });
 window.demoEditor = ed;

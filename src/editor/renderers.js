@@ -140,7 +140,7 @@ export function sanitizeMermaidSource(code) {
 let mmdSeq = 0;
 let mmdQueue = Promise.resolve(); // mermaid.render is not re-entrant: serialize all renders
 const mmdCache = new Map();       // `${theme}\0${code}` -> svg string (bounded)
-const CACHE_MAX = 60;
+const CACHE_MAX = 120;      // both themes are cached per diagram (dark editor keeps a light variant for printing)
 
 /** A cached SVG is reused for several nodes: give each copy its own id (its <style> and marker refs are scoped by it). */
 function uniqueSvgIds(svg) {
@@ -165,13 +165,40 @@ export function renderMermaid(container, code, theme) {
   const run = async () => {
     if (!String(code).trim()) { container.replaceChildren(); return { ok: true, empty: true }; }
     if (mermaidDisabled()) { container.replaceChildren(errorEl('mermaid', 'Diagram rendering is disabled in this environment.')); return { ok: false, message: 'disabled' }; }
-    const key = `${mTheme}\0${code}`;
-    const cached = mmdCache.get(key);
+    const cached = mmdCache.get(`${mTheme}\0${code}`);
     if (cached) { container.innerHTML = uniqueSvgIds(cached); return { ok: true, cached: true }; }
+    const r = await svgJob(code, theme);
+    if (!r.ok) { container.replaceChildren(errorEl('mermaid', `Mermaid syntax error: ${r.message}`)); return r; }
+    container.innerHTML = r.svg;
+    return { ok: true };
+  };
+  const p = mmdQueue.then(run, run);
+  mmdQueue = p.catch(() => {});
+  return p;
+}
+
+/** SYNC cache lookup of the finished SVG of `code` in `theme` ('dark' | anything else = light); a fresh copy with unique ids, or null. */
+export function getCachedMermaidSvg(code, theme) {
+  const svg = mmdCache.get(`${theme === 'dark' ? 'dark' : 'default'}\0${code}`);
+  return svg ? uniqueSvgIds(svg) : null;
+}
+
+/** Render (or fetch from the cache) the SVG of `code` for `theme` WITHOUT touching the DOM (other than mermaid's own temp nodes,
+ *  removed again). Used for the light print variant. Resolves {ok:true, svg} | {ok:false, message}; never rejects. Serialized with
+ *  every other mermaid render (mermaid keeps global theme state). */
+export function renderMermaidSvg(code, theme) { return enqueue(() => svgJob(code, theme)); }
+async function svgJob(code, theme) {
+  const mTheme = theme === 'dark' ? 'dark' : 'default';
+  const key = `${mTheme}\0${code}`;
+  {
+    if (!String(code).trim()) return { ok: true, svg: '' };
+    if (mermaidDisabled()) return { ok: false, message: 'disabled' };
+    const cached = mmdCache.get(key);
+    if (cached) return { ok: true, svg: uniqueSvgIds(cached) };
     const id = `mdx-mmd-${++mmdSeq}`;
     try {
       const mermaid = await loadMermaid();
-      // initialize() every time: theme is global state in mermaid and must follow the editor theme.
+      // initialize() every time: theme is global state in mermaid and must follow the requested theme.
       mermaid.initialize({
         startOnLoad: false, securityLevel: 'strict', theme: mTheme,
         suppressErrorRendering: true, // don't append mermaid's own "syntax error" bomb graphic to the page
@@ -184,20 +211,15 @@ export function renderMermaid(container, code, theme) {
       const svg = sanitizeSvgString(rawSvg);
       if (mmdCache.size >= CACHE_MAX) mmdCache.delete(mmdCache.keys().next().value);
       mmdCache.set(key, svg);
-      container.innerHTML = svg;
-      return { ok: true };
+      return { ok: true, svg: uniqueSvgIds(svg) };
     } catch (err) {
-      const message = (err && (err.message || err.str)) || String(err);
-      container.replaceChildren(errorEl('mermaid', `Mermaid syntax error: ${message}`));
-      return { ok: false, message };
+      return { ok: false, message: (err && (err.message || err.str)) || String(err) };
     } finally {
       cleanupMermaidTemp(id);
     }
-  };
-  const p = mmdQueue.then(run, run);
-  mmdQueue = p.catch(() => {});
-  return p;
+  }
 }
+function enqueue(job) { const p = mmdQueue.then(job, job); mmdQueue = p.catch(() => {}); return p; }
 
 // ---------------------------------------------------------------- KaTeX
 /**

@@ -333,6 +333,252 @@ try {
   ok('#28 unedited CRLF: getMarkdown exact before/in source view/after, isModified false throughout', r28.before && r28.inSrc && r28.after && !r28.mod0 && !r28.modSrc && !r28.mod1 && r28.taHasNoCR, JSON.stringify(r28));
   ok('#28 edited in source view -> modified, edit kept', r28.editedMod && r28.editedTxt.endsWith('more\n') && r28.editedAfter.includes('more'), JSON.stringify(r28).slice(0, 300));
 
+  // ---- PRINT (print.css + prepareForPrint/afterPrint/setPrintLinks): real print media + page.pdf() + pdftotext ----
+  {
+    const { execFileSync } = await import('node:child_process');
+    const { writeFileSync, mkdirSync, statSync } = await import('node:fs');
+    const SAMPLES = join(ROOT, 'tmp-print-samples'); mkdirSync(SAMPLES, { recursive: true });
+    const pdfText = (file) => execFileSync('pdftotext', [file, '-'], { encoding: 'utf8', maxBuffer: 1 << 26 }).replace(/[ \t]*\n+[ \t]*/g, ' ').replace(/[ \t]+/g, ' ');
+    const pdfPages = (file) => { const t = execFileSync('pdfinfo', [file], { encoding: 'utf8' }); return Number((/Pages:\s+(\d+)/.exec(t) || [])[1] || 0); };
+    const table = '| Name | Value | Notes |\n| --- | --- | --- |\n' + Array.from({ length: 6 }, (_, i) => `| row${i} | ${i * 7} | some wrapped text that is fairly long to exercise word wrapping in the printed table cell number ${i} |`).join('\n');
+    const printDoc = `# Print Title\n\nIntro paragraph with a [link](https://example.com/a), an [anchor](#top), and ${'long text '.repeat(60)}\n\n## Table section\n\n${table}\n\n### Code\n\n\`\`\`js\nconst veryLongLine = "${'x'.repeat(220)}";\nconsole.log(veryLongLine);\n\`\`\`\n\n- [x] done task\n- [ ] open task\n\n${flow}\n\nInline math $e^{i\\pi} + 1 = 0$ and block:\n\n$$\\int_0^1 x^2\\,dx = \\frac{1}{3}$$\n\n<div align="center">raw-html-chip-text</div>\n\nTrailing paragraph.\n`;
+    const visible = (sel) => page.evaluate((s) => { const els = [...document.querySelectorAll(s)]; return els.map((e) => { const cs = getComputedStyle(e); const r = e.getBoundingClientRect(); return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 0 && r.height > 0; }); }, sel);
+    const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+    const lum = (c) => { const [r, g, b] = rgb(c); return (0.299 * r + 0.587 * g + 0.114 * b); };
+    const prevMedia = async () => { await page.emulateMedia({ media: null }); };
+
+    for (const theme of ['light', 'dark']) {
+      await prevMedia();
+      await page.evaluate(([t, d]) => { document.documentElement.dataset.theme = t; const e = window.__mdwe.editor; e.setTheme(t); e.setMarkdown(d); e.markSaved(); }, [theme, printDoc]);
+      await page.waitForFunction(() => document.querySelector('[data-mdx-node="mermaid"] svg') && document.querySelectorAll('.katex').length >= 2, null, { timeout: 60000 });
+      const beforeMd = await page.evaluate(() => window.__mdwe.editor.getMarkdown());
+      const dirty0 = await page.evaluate(() => window.__mdwe.state.dirty);
+      const darkSvgBefore = await page.evaluate(() => document.querySelector('[data-mdx-node="mermaid"] svg').outerHTML);
+      let onChangeFired = false; await page.exposeFunction(`__oc_${theme}`, () => { onChangeFired = true; }).catch(() => {});
+      const t0 = Date.now();
+      await page.evaluate(() => window.__mdwe.editor.prepareForPrint());
+      console.log(`   [${theme}] prepareForPrint took ${Date.now() - t0} ms`);
+      ok(`print[${theme}] prepareForPrint() resolved; all nodes rendered`, await page.evaluate(() => [...document.querySelectorAll('[data-mdx-node]')].every((n) => n.dataset.mdxRendered === 'ok')));
+      await page.emulateMedia({ media: 'print' });
+      await page.waitForTimeout(150);
+      ok(`print[${theme}] editor is in printing state (matchMedia listener)`, await page.evaluate(() => window.__mdwe.editor.isPrinting()));
+
+      // hidden chrome
+      for (const [name, sel] of [['toolbar', '.mdx-toolbar'], ['file bar', '#filebar'], ['status', '#status'], ['drive status', '#drive-status'], ['edit-source buttons', '.mdx-node-toggle'], ['block headers', '.mdx-node-head'], ['popover', '.mdx-popover']]) {
+        const v = await visible(sel);
+        ok(`print[${theme}] ${name} not displayed`, v.every((x) => !x), JSON.stringify(v));
+      }
+      ok(`print[${theme}] per-block source fields hidden`, (await visible('textarea, .mdx-math-source, .mdx-source')).every((x) => !x));
+      ok(`print[${theme}] placeholder/gapcursor hidden`, (await visible('.ProseMirror-gapcursor, .ProseMirror-trailingBreak')).every((x) => !x));
+      ok(`print[${theme}] .mdx-print-source hidden when not in source mode`, (await visible('.mdx-print-source')).every((x) => !x));
+      // colours
+      const cols = await page.evaluate(() => { const r = document.querySelector('.mdx-root'), pm = document.querySelector('.ProseMirror'); const cs = (e) => getComputedStyle(e); const th = document.querySelector('.ProseMirror th'), pre = document.querySelector('.ProseMirror pre'); return { rootBg: cs(r).backgroundColor, rootFg: cs(r).color, bodyBg: cs(document.body).backgroundColor, pmFg: cs(pm).color, thBg: cs(th).backgroundColor, preBg: cs(pre).backgroundColor, preFg: cs(pre).color, p: cs(document.querySelector('.ProseMirror p')).color, h: cs(document.querySelector('.ProseMirror h1')).color, adjust: cs(pre).printColorAdjust || cs(pre).webkitPrintColorAdjust, scheme: cs(r).colorScheme, mw: cs(document.querySelector('.mdx-wysiwyg')).maxWidth, pad: cs(document.querySelector('.mdx-wysiwyg')).paddingLeft, tblw: document.querySelector('.ProseMirror table').getBoundingClientRect().width, pmw: document.querySelector('.ProseMirror').getBoundingClientRect().width }; });
+      ok(`print[${theme}] root+body background white-ish`, lum(cols.rootBg) > 240 && lum(cols.bodyBg) > 240, JSON.stringify(cols));
+      ok(`print[${theme}] text dark`, lum(cols.rootFg) < 80 && lum(cols.pmFg) < 80 && lum(cols.p) < 80 && lum(cols.h) < 80, JSON.stringify(cols));
+      ok(`print[${theme}] code block / table header keep LIGHT backgrounds + color-adjust exact`, lum(cols.preBg) > 220 && lum(cols.thBg) > 210 && lum(cols.preFg) < 100 && cols.adjust === 'exact', JSON.stringify(cols));
+      ok(`print[${theme}] editor container: no max-width/padding, table fills width`, cols.mw === 'none' && cols.pad === '0px' && cols.tblw > cols.pmw * 0.95, JSON.stringify(cols));
+      // diagrams + math visible, light colours
+      ok(`print[${theme}] mermaid svg + .katex visible`, (await visible('[data-mdx-node="mermaid"] svg')).every(Boolean) && (await visible('.katex')).length >= 2 && (await visible('.katex')).every(Boolean));
+      const node = await page.evaluate(() => { const n = document.querySelector('[data-mdx-node="mermaid"] svg .node rect, [data-mdx-node="mermaid"] svg .node polygon'); const svg = document.querySelector('[data-mdx-node="mermaid"] svg'); return { fill: getComputedStyle(n).fill, html: svg.outerHTML, fb: !!document.querySelector('.mdx-print-fallback'), maxH: getComputedStyle(svg).maxHeight }; });
+      ok(`print[${theme}] diagram node fill is light (not dark), no invert fallback needed`, lum(node.fill) > 200 && !node.fb, node.fill + ' fallback=' + node.fb);
+      ok(`print[${theme}] svg max-height 90vh rule applied`, node.maxH !== 'none', node.maxH);
+      if (theme === 'dark') ok('print[dark] svg markup was swapped to the light cache (differs from dark svg)', node.html.replace(/mdx-mmd-\d+/g, 'ID') !== darkSvgBefore.replace(/mdx-mmd-\d+/g, 'ID'));
+      else ok('print[light] svg markup unchanged (nothing to swap)', node.html === darkSvgBefore);
+      // raw chip + task list + link
+      ok(`print[${theme}] raw chip prints verbatim text, label hidden`, await page.evaluate(() => { const c = document.querySelector('.mdx-raw'); return !!c && c.textContent.includes('raw-html-chip-text') && getComputedStyle(c.querySelector('.mdx-raw-label') || c).display !== 'block' || !c.querySelector('.mdx-raw-label'); }));
+      ok(`print[${theme}] task checkboxes visible`, (await visible('ul[data-type="taskList"] input[type="checkbox"]')).length === 2 && (await visible('ul[data-type="taskList"] input[type="checkbox"]')).every(Boolean));
+      // links option
+      const linkAfter = async () => page.evaluate(() => [...document.querySelectorAll('.ProseMirror a')].map((a) => getComputedStyle(a, '::after').content));
+      let la = await linkAfter(); ok(`print[${theme}] link URLs off by default`, la.every((c) => c === 'none' || c === 'normal' || c === '""'), JSON.stringify(la));
+      await page.evaluate(() => window.__mdwe.editor.setPrintLinks(true)); la = await linkAfter();
+      ok(`print[${theme}] setPrintLinks(true): https link gets (url), #anchor does not`, /example\.com\/a/.test(la[0]) && !/#top/.test(la[1] || ''), JSON.stringify(la));
+      await page.evaluate(() => window.__mdwe.editor.setPrintLinks(false));
+
+      // PDF
+      const pdf = join(SAMPLES, `print-${theme}.pdf`);
+      await page.pdf({ path: pdf, format: 'A4', printBackground: true, preferCSSPageSize: true });
+      const txt = pdfText(pdf), pages = pdfPages(pdf);
+      ok(`print[${theme}] PDF non-empty, pages > 0`, statSync(pdf).size > 5000 && pages > 0, `${statSync(pdf).size} bytes, ${pages} pages`);
+      for (const w of ['Print Title', 'GDELT 2.0 Event Database', 'Raw Event Counts', 'BBS / UGC / Census 2022', 'raw-html-chip-text', 'done task', 'open task', 'row3'])
+        ok(`print[${theme}] pdftotext has "${w}"`, txt.includes(w), txt.slice(0, 200));
+      ok(`print[${theme}] math rendered in PDF (KaTeX glyphs: "1" "0" "x" "3")`, /e\s*iπ|eiπ|iπ/.test(txt.replace(/\s+/g, ' ')) || /∫|1\s*3/.test(txt), txt.slice(-400));
+      ok(`print[${theme}] no editor UI text in PDF`, !/Edit source|Markdown\s+Open|Start writing/.test(txt) && !/Open from Drive/.test(txt));
+      ok(`print[${theme}] long code line not clipped (tail of line present)`, txt.replace(/\s+/g, '').includes('x'.repeat(200)));
+      // document untouched
+      await page.emulateMedia({ media: null });
+      await page.waitForTimeout(150);
+      const after = await page.evaluate(() => { const e = window.__mdwe.editor; return { md: e.getMarkdown(), mod: e.isModified(), printing: e.isPrinting(), fb: !!document.querySelector('.mdx-print-fallback'), dirty: window.__mdwe.state.dirty }; });
+      ok(`print[${theme}] after print: getMarkdown byte-identical, isModified false, page dirty flag unchanged`, after.md === beforeMd && !after.mod && after.dirty === dirty0, JSON.stringify({ ...after, md: after.md.length }));
+      ok(`print[${theme}] after print: printing state cleared`, !after.printing && !after.fb);
+      ok(`print[${theme}] after print: on-screen diagram markup restored to ${theme} svg`, (await page.evaluate(() => document.querySelector('[data-mdx-node="mermaid"] svg').outerHTML)) === darkSvgBefore);
+      ok(`print[${theme}] onChange not fired by printing`, !onChangeFired);
+    }
+
+    // beforeprint/afterprint window events (what Ctrl+P in Chrome fires), dark: swap is synchronous from cache
+    await page.evaluate(() => { document.documentElement.dataset.theme = 'dark'; window.__mdwe.editor.setTheme('dark'); });
+    await page.waitForFunction(() => document.querySelector('[data-mdx-node="mermaid"] svg'), null, { timeout: 60000 });
+    await page.evaluate(() => window.__mdwe.editor.prepareForPrint());
+    const ev = await page.evaluate(() => { const svg0 = document.querySelector('[data-mdx-node="mermaid"] svg').outerHTML; window.dispatchEvent(new Event('beforeprint')); const mid = document.querySelector('[data-mdx-node="mermaid"] svg').outerHTML; const fb = !!document.querySelector('.mdx-print-fallback'); window.dispatchEvent(new Event('afterprint')); return { changed: svg0 !== mid, fb, restored: document.querySelector('[data-mdx-node="mermaid"] svg').outerHTML === svg0 }; });
+    ok('print: beforeprint swaps dark diagram to cached light svg synchronously, afterprint restores it', ev.changed && !ev.fb && ev.restored, JSON.stringify(ev));
+    // fallback: no light variant cached for a brand new dark diagram -> invert fallback class, restored afterwards
+    await page.evaluate(() => window.__mdwe.editor.setMarkdown('```mermaid\nflowchart LR\n  Q1[NeverPrepared] --> Q2[Other]\n```\n'));
+    await page.waitForFunction(() => document.querySelector('[data-mdx-node="mermaid"] svg'), null, { timeout: 60000 });
+    const fbRes = await page.evaluate(() => { window.dispatchEvent(new Event('beforeprint')); const fb = !!document.querySelector('.mdx-mermaid-render.mdx-print-fallback'); window.dispatchEvent(new Event('afterprint')); return { fb, after: !document.querySelector('.mdx-print-fallback') }; });
+    ok('print: un-prepared dark diagram uses the CSS fallback class on beforeprint and loses it on afterprint', fbRes.fb && fbRes.after, JSON.stringify(fbRes));
+
+    // source mode print
+    const srcDoc = '# Source Title\n\nsome **markdown** text with `code`\n\n```mermaid\nflowchart LR\n  A --> B\n```\n';
+    await page.evaluate((d) => { document.documentElement.dataset.theme = 'light'; const e = window.__mdwe.editor; e.setTheme('light'); e.setMarkdown(d); e.markSaved(); e.setSourceMode(true); }, srcDoc);
+    await page.evaluate(() => window.__mdwe.editor.prepareForPrint());
+    await page.emulateMedia({ media: 'print' }); await page.waitForTimeout(150);
+    const sv = await page.evaluate(() => { const pre = document.querySelector('.mdx-print-source'); const cs = getComputedStyle(pre); return { shown: cs.display !== 'none', ws: cs.whiteSpace, text: pre.textContent, taShown: getComputedStyle(document.querySelector('textarea.mdx-source')).display !== 'none', wysShown: getComputedStyle(document.querySelector('.mdx-wysiwyg')).display !== 'none', ff: cs.fontFamily }; });
+    ok('print source mode: pre.mdx-print-source shown (pre-wrap), textarea + WYSIWYG hidden, text = markdown', sv.shown && sv.ws === 'pre-wrap' && !sv.taShown && !sv.wysShown && sv.text === srcDoc, JSON.stringify(sv).slice(0, 300));
+    const pdfS = join(SAMPLES, 'print-source-mode.pdf');
+    await page.pdf({ path: pdfS, format: 'A4', printBackground: true });
+    const ts = pdfText(pdfS);
+    ok('print source mode: PDF shows the markdown text (# Source Title, ```mermaid, flowchart LR)', ts.includes('# Source Title') && ts.includes('```mermaid') && ts.includes('flowchart LR') && ts.includes('some **markdown** text'), ts.slice(0, 200));
+    await page.emulateMedia({ media: null }); await page.waitForTimeout(150);
+    ok('print source mode: after print getMarkdown identical, not modified, pre emptied', await page.evaluate((d) => { const e = window.__mdwe.editor; return e.getMarkdown() === d && !e.isModified() && document.querySelector('.mdx-print-source').textContent === ''; }, srcDoc));
+    await page.evaluate(() => window.__mdwe.editor.setSourceMode(false));
+
+    // long document: multi-page PDF, headings not stranded at page bottom
+    const paras = Array.from({ length: 200 }, (_, i) => (i % 25 === 0 ? `## Section ${i / 25}\n\n` : '') + `Paragraph ${i}: ` + 'lorem ipsum dolor sit amet consectetur '.repeat(8) + '\n').join('\n');
+    const longDoc = `# Long Doc\n\n${paras}\n${table}\n\n${table}\n\n${flow}\n\n${fx('14-mermaid-sequence.md')}\n\n${flow}\n\n$$E = mc^2$$\n\n${table}\n\nEND-OF-LONG-DOC\n`;
+    await page.evaluate((d) => { document.documentElement.dataset.theme = 'dark'; const e = window.__mdwe.editor; e.setTheme('dark'); e.setMarkdown(d); e.markSaved(); }, longDoc);
+    await page.waitForFunction(() => document.querySelectorAll('[data-mdx-node="mermaid"] svg').length >= 3, null, { timeout: 90000 });
+    await page.evaluate(() => window.__mdwe.editor.prepareForPrint());
+    await page.emulateMedia({ media: 'print' });
+    const pdfL = join(SAMPLES, 'print-long-dark.pdf');
+    await page.pdf({ path: pdfL, format: 'A4', printBackground: true });
+    const tl = execFileSync('pdftotext', ['-layout', pdfL, '-'], { encoding: 'utf8', maxBuffer: 1 << 26 });
+    const np = pdfPages(pdfL);
+    ok('print long doc: multi-page PDF (>= 5 pages), last text present', np >= 5 && pdfText(pdfL).includes('END-OF-LONG-DOC') && pdfText(pdfL).includes('GDELT 2.0 Event Database'), `${np} pages`);
+    const pageTexts = tl.split('\f').map((t) => t.split('\n').map((l) => l.trim()).filter(Boolean));
+    const stranded = pageTexts.map((ls, i) => [i + 1, ls[ls.length - 1] || '']).filter(([i, l]) => /^(Section \d|Long Doc|Table section)/.test(l) && i < pageTexts.length);
+    ok('print long doc: no heading is the last line of a page (best effort)', stranded.length === 0, JSON.stringify(stranded));
+    // NOTE: TipTap tables have no <thead> (header cells are a <tr> of <th> inside <tbody>), so Chrome cannot repeat the header on
+    // continuation pages; `display: table-header-group` is set for any <thead> and the header row is kept with its first body row.
+    const lastLines = pageTexts.map((ls) => ls[ls.length - 1] || '');
+    ok('print long doc: a table header row is never stranded alone at the bottom of a page', !lastLines.some((l) => /^Name\s+Value\s+Notes/.test(l)), JSON.stringify(lastLines.filter((l) => /^Name/.test(l))));
+    ok('print long doc: table rows are not split mid-row across pages (each row text intact)', pdfText(pdfL).split('some wrapped text that is fairly long to exercise word wrapping in the printed table cell number').length - 1 >= 15);
+    console.log(`   long doc: ${np} pages; samples in ${SAMPLES}`);
+    const aft = await page.evaluate(() => { const e = window.__mdwe.editor; return { md: e.getMarkdown() }; });
+    await page.emulateMedia({ media: null }); await page.waitForTimeout(150);
+    ok('print long doc: isModified false after printing', !(await page.evaluate(() => window.__mdwe.editor.isModified())));
+    ok('print long doc: getMarkdown byte-identical', (await page.evaluate(() => window.__mdwe.editor.getMarkdown())) === aft.md && aft.md === longDoc);
+    await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; window.__mdwe.editor.setTheme('light'); });
+
+    // BUG-32: wide tables with unbreakable cell content must wrap (not clip) in print. Every header + every cell must be in the PDF
+    // text, IN ITS OWN COLUMN: `pdftotext -bbox` words are grouped by their left x (wrapped lines of one cell all start at the cell's
+    // left edge), so a wrapped/fragmented cell is compared as the exact concatenation of its fragments (no interleaving across columns).
+    {
+      const cn = (r, c, ncols) => (ncols > 10 ? `cell${r}_${String(c).padStart(2, '0')}` : `cell${r}${c}`); // 9 cols: cell08 / cell18 ... (BUG-32 repro naming)
+      const mk = (cols, rows, pad) => { const hdr = Array.from({ length: cols }, (_, c) => `H${c}`); const body = Array.from({ length: rows }, (_, r) => Array.from({ length: cols }, (_, c) => `${cn(r, c, cols)}${'x'.repeat(pad)}`)); return [hdr, ...body]; };
+      const toMd = (grid) => grid.map((row, i) => `| ${row.join(' | ')} |` + (i === 0 ? `\n| ${row.map(() => '---').join(' | ')} |` : '')).join('\n');
+      const longUrl = 'https://example.com/' + 'segment/'.repeat(14) + 'end-of-url-token';
+      const hash = 'a1b2c3d4e5f6'.repeat(8);
+      const code1 = 'someFunctionName_'.repeat(6) + 'END', code2 = 'q'.repeat(90);
+      const prose = 'word '.repeat(60) + 'proseend', prose2 = 'more prose '.repeat(30) + 'lastprose';
+      const normalGrid = [['Name', 'Value', 'Notes'], ...Array.from({ length: 6 }, (_, i) => [`row${i}`, `${i * 7}`, `some wrapped text that is fairly long to exercise word wrapping in the printed table cell number ${i}`])];
+      const grids = {
+        '9col': mk(9, 4, 14), '12col': mk(12, 3, 16), '20col': mk(20, 3, 14), '8col-control': mk(8, 4, 14),
+        'long-url': [['Name', 'Link', 'Hash', 'Note'], ['urlrow', longUrl, hash, 'tailnote'], ['second', 'plain', 'plain2', 'tailnote2']],
+        'inline-code': [['Id', 'Code', 'Other', 'Tail'], ['1', code1, 'a.b.c()', 'code-tail-marker'], ['2', code2, 'plain', 'code-tail-marker2']],
+        'normal': normalGrid, 'wrapped-prose': [['A', 'B', 'C'], [prose, 'short', prose2]],
+      };
+      const mdOf = (name) => name === 'inline-code' ? toMd(grids[name].map((row, i) => i === 0 ? row : row.map((c, j) => (j === 1 || j === 2) ? '`' + c + '`' : c))) : toMd(grids[name]);
+      const cases = [...Object.keys(grids).map((k) => [k, mdOf(k), grids[k]]), ['long-url-autolink', `| A | B | C |\n| --- | --- | --- |\n| [${longUrl}](${longUrl}) | mid | last-col-marker |`, [['A', 'B', 'C'], [longUrl, 'mid', 'last-col-marker']]]];
+      const columnsFromPdf = (file, skip) => {
+        const xml = execFileSync('pdftotext', ['-bbox', file, '-'], { encoding: 'utf8', maxBuffer: 1 << 26 });
+        const words = []; let pg = 0;
+        for (const m of xml.matchAll(/<page\b|<word xMin="([\d.]+)" yMin="([\d.]+)"[^>]*>([^<]*)<\/word>/g)) { if (m[0] === '<page') { pg++; continue; } const t = m[3].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'"); if (!skip.has(t)) words.push({ pg, x: +m[1], y: +m[2], t }); }
+        const xs = [...new Set(words.map((w) => w.x))].sort((a, b) => a - b); const groups = [];
+        for (const x of xs) { const g = groups[groups.length - 1]; if (g && x - g.max < 1.5) { g.max = x; g.xs.push(x); } else groups.push({ max: x, xs: [x] }); }
+        return groups.map((g) => words.filter((w) => w.x >= g.xs[0] && w.x <= g.max).sort((a, b) => a.pg - b.pg || a.y - b.y || a.x - b.x).map((w) => w.t).join(''));
+      };
+      const COLMODE = new Set(['9col', '12col', '20col', '8col-control', 'long-url', 'long-url-autolink']);
+      const MARKERS = {
+        'inline-code': [['Id', 'Code', 'Other', 'Tail', 'END', 'a.b.c()', 'code-tail-marker', 'code-tail-marker2', 'plain'], { q: 90 }],
+        'normal': [['Name', 'Value', 'Notes', 'row0', 'row5', 'number5'], {}],
+        'wrapped-prose': [['A', 'B', 'C', 'proseend', 'lastprose', 'short'], {}],
+      };
+      const skipWords = new Set(['T', 'After', 'table', 'paragraph.']);
+      const vp0 = page.viewportSize(); await page.setViewportSize({ width: 680, height: 900 }); // ~ printable width of A4 minus 18 mm margins, so the geometry checks are meaningful
+      for (const theme of ['light', 'dark']) {
+        for (const [name, md, grid] of cases) {
+          await page.emulateMedia({ media: null });
+          await page.evaluate(([t, d]) => { document.documentElement.dataset.theme = t; const e = window.__mdwe.editor; e.setTheme(t); e.setMarkdown(d); e.markSaved(); }, [theme, `# T\n\n${md}\n\nAfter table paragraph.\n`]);
+          await page.waitForFunction(() => document.querySelector('.ProseMirror table'), null, { timeout: 10000 });
+          await page.evaluate(() => window.__mdwe.editor.prepareForPrint());
+          await page.emulateMedia({ media: 'print' }); await page.waitForTimeout(150);
+          const geo = await page.evaluate(() => { const t = document.querySelector('.ProseMirror table'), pm = document.querySelector('.ProseMirror'); const pr = pm.getBoundingClientRect(), tr = t.getBoundingClientRect(); let over = 0; t.querySelectorAll('th,td').forEach((c) => { const r = c.getBoundingClientRect(); if (r.right > pr.right + 1.5) over++; }); const w = t.closest('.tableWrapper'); return { tblRight: Math.round(tr.right), pmRight: Math.round(pr.right), over, cells: t.querySelectorAll('th,td').length, wrapOv: w ? getComputedStyle(w).overflowX : 'none', layout: getComputedStyle(t).tableLayout }; });
+          ok(`print[${theme}] BUG-32 ${name}: table fits the content box (no cell past the right edge), fixed layout`, geo.over === 0 && geo.tblRight <= geo.pmRight + 1.5 && geo.layout === 'fixed', JSON.stringify(geo));
+          ok(`print[${theme}] BUG-32 ${name}: .tableWrapper does not clip (overflow visible)`, geo.wrapOv === 'visible' || geo.wrapOv === 'none', JSON.stringify(geo));
+          const pdfW = join(SAMPLES, `print-wide-${name}-${theme}.pdf`);
+          await page.pdf({ path: pdfW, format: 'A4', printBackground: true });
+          if (COLMODE.has(name)) {
+            const got = columnsFromPdf(pdfW, skipWords);
+            const want = grid[0].map((_, c) => grid.map((row) => row[c].replace(/\s+/g, '')).join(''));
+            ok(`print[${theme}] BUG-32 ${name} (${want.length} cols): PDF has ${want.length} columns`, got.length === want.length, `got ${got.length}`);
+            const bad = want.map((w, c) => (got[c] === w ? null : c)).filter((c) => c !== null);
+            ok(`print[${theme}] BUG-32 ${name}: every header + cell of every column is in the PDF text, in its own column, untruncated`, bad.length === 0, bad.slice(0, 3).map((c) => `col${c}: want ${want[c].slice(0, 60)}… got ${(got[c] || '').slice(0, 60)}…`).join(' | '));
+          } else {
+            // prose / code cells interleave across columns line by line: check every short marker plus the count of the repeated filler chars
+            const flat = execFileSync('pdftotext', [pdfW, '-'], { encoding: 'utf8', maxBuffer: 1 << 26 }).replace(/\s+/g, '');
+            const [markers, counts] = MARKERS[name];
+            const miss = markers.filter((m) => !flat.includes(m));
+            ok(`print[${theme}] BUG-32 ${name}: every header / marker cell is in the PDF text (${miss.length} missing)`, miss.length === 0, miss.join(','));
+            const lowCounts = Object.entries(counts).filter(([ch, nWant]) => flat.split(ch).length - 1 < nWant);
+            ok(`print[${theme}] BUG-32 ${name}: long unbreakable content printed in full (char counts)`, lowCounts.length === 0, JSON.stringify(lowCounts));
+          }
+          ok(`print[${theme}] BUG-32 ${name}: paragraph after the table still printed`, pdfText(pdfW).includes('After table paragraph.'));
+        }
+      }
+      await page.setViewportSize(vp0);
+      await page.emulateMedia({ media: null });
+      await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; window.__mdwe.editor.setTheme('light'); });
+      // screen (non-print) layout of a wide table is untouched: still scrolls inside .tableWrapper
+      await page.evaluate((d) => window.__mdwe.editor.setMarkdown(d), toMd(grids['9col']));
+      await page.waitForFunction(() => document.querySelector('.ProseMirror table'), null, { timeout: 10000 });
+      ok('screen: wide table layout unchanged (.tableWrapper still overflow-x:auto)', await page.evaluate(() => { const w = document.querySelector('.ProseMirror .tableWrapper'); return !w || getComputedStyle(w).overflowX === 'auto'; }));
+    }
+
+    // Ctrl/Cmd+P must bubble out of every per-block source field to `document` (page handler runs doPrint)
+    {
+      await page.evaluate(() => window.__mdwe.editor.setMarkdown('```mermaid\nflowchart LR\n  A --> B\n```\n\nInline $x^2$ here.\n\n$$y^2$$\n'));
+      await page.waitForFunction(() => document.querySelectorAll('.katex').length >= 2 && document.querySelector('[data-mdx-node="mermaid"] svg'), null, { timeout: 60000 });
+      await page.evaluate(() => { window.__p = []; let cap = null; window.addEventListener('keydown', (e) => { cap = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p' ? e.defaultPrevented : null; }, true); document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') window.__p.push({ def: cap, sel: e.target.className || e.target.tagName }); }); /* def = defaultPrevented as seen BEFORE the page's own handler (capture phase on window) */ });
+      for (const [kindSel, tag] of [['[data-mdx-node="mermaid"]', 'textarea'], ['[data-mdx-node="math-block"]', 'textarea'], ['[data-mdx-node="math-inline"]', 'input']]) {
+        if (tag === 'input') { const bb = await page.locator(`${kindSel} .mdx-math-render`).first().boundingBox(); await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2); }
+        else await page.locator(`${kindSel} [data-mdx-action="toggle-source"]`).first().click();
+        const field = page.locator(`${kindSel} ${tag}.mdx-${/mermaid/.test(kindSel) ? 'mermaid' : 'math'}-source`).first();
+        await field.focus();
+        await field.press('End'); await field.type('Q');
+        const before = await page.evaluate(() => window.__p.length);
+        await field.press('Control+p');
+        const r = await page.evaluate((b) => window.__p.slice(b), before);
+        ok(`Ctrl+P inside ${kindSel} ${tag} reaches document (not stopped, not prevented by the field)`, r.length === 1 && r[0].def === false, JSON.stringify(r));
+        const b2 = await page.evaluate(() => window.__p.length);
+        await field.press('Meta+p');
+        ok(`Cmd+P inside ${kindSel} ${tag} reaches document`, (await page.evaluate(() => window.__p.length)) === b2 + 1);
+        ok(`Ctrl+P inside ${kindSel} committed the pending edit first`, (await page.evaluate(() => window.__mdwe.editor.getMarkdown())).includes('Q'));
+        await field.press('Escape');
+      }
+      // WYSIWYG body + in-editor Ctrl+K handler must not swallow Ctrl+P either
+      await page.locator('.ProseMirror p').first().click();
+      const b3 = await page.evaluate(() => window.__p.length);
+      await page.keyboard.press('Control+p');
+      const r3 = await page.evaluate((b) => window.__p.slice(b), b3);
+      ok('Ctrl+P in the WYSIWYG body reaches document, not prevented by the editor keymap', r3.length === 1 && r3[0].def === false, JSON.stringify(r3));
+      await page.evaluate(() => window.__mdwe.editor.setSourceMode(true));
+      const b4 = await page.evaluate(() => window.__p.length);
+      await page.keyboard.press('Control+p');
+      const r4 = await page.evaluate((b) => window.__p.slice(b), b4);
+      ok('Ctrl+P in the whole-document source textarea reaches document', r4.length === 1 && r4[0].def === false, JSON.stringify(r4));
+      await page.evaluate(() => window.__mdwe.editor.setSourceMode(false));
+    }
+  }
+
   // final tally
   const viol = await page.evaluate(() => window.__csp);
   ok('no securitypolicyviolation events', viol.length === 0, JSON.stringify(viol));

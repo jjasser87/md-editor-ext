@@ -14,3 +14,12 @@ body { display: flex; flex-direction: column; font: 14px/1.4 system-ui, sans-ser
 #editor-host { flex:1; min-height:0; overflow:auto; }
 #dropzone { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(37,99,235,.85); color:#fff; font:600 24px system-ui; z-index:99; }
 #dropzone[hidden] { display:none; }
+
+/* Print / Save as PDF (page shell only; the document's own print styles live in the editor CSS).
+   The page is a fixed-height flex column with a scrolling editor, which would print as a single clipped page. */
+@media print {
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+  body { display: block; }
+  #filebar, #dropzone, #drive-status, #status, .gdui-overlay, .gdui-dialog { display: none !important; }
+  #editor-host { overflow: visible !important; height: auto !important; min-height: 0; flex: none; }
+}

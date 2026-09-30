@@ -3,9 +3,10 @@ import { Editor } from '@tiptap/core';
 import { getExtensions, normalizeMarkdownOutput } from './extensions.js';
 import { detectWarnings } from './markdown-fixes.js';
 import { createToolbar } from './toolbar.js';
-import { flushEdits, refreshTheme } from './mermaid-math.js';
+import { flushEdits, refreshTheme, prepareNodesForPrint, swapNodesForPrint, restoreNodesAfterPrint } from './mermaid-math.js';
 import 'katex/dist/katex.min.css'; // bundled locally by Vite (fonts emitted next to the CSS, relative url())
 import './editor.css';
+import './print.css'; // @media print only (plus one display:none helper); must come after editor.css
 
 const DEBOUNCE_MS = 250;
 
@@ -20,7 +21,9 @@ export function createEditor(containerEl, { markdown = '', onChange, onWarnings,
   const src = document.createElement('textarea');
   src.className = 'mdx-source'; src.hidden = true; src.spellcheck = false;
   src.setAttribute('aria-label', 'Markdown source');
-  body.append(wys, src);
+  // Print-only mirror of the whole-document source view (a <textarea> prints clipped): filled on beforeprint / prepareForPrint.
+  const printSrc = document.createElement('pre'); printSrc.className = 'mdx-print-source'; printSrc.setAttribute('aria-hidden', 'true');
+  body.append(wys, src, printSrc);
   containerEl.appendChild(root);
 
   let sourceMode = false;
@@ -112,6 +115,47 @@ export function createEditor(containerEl, { markdown = '', onChange, onWarnings,
     if (!sourceMode) { baseMd = md; baseDoc = editor.state.doc; }
     return md;
   }
+  // ---- printing: see EDITOR_NOTES.md "Print". Nothing here touches the ProseMirror doc, so getMarkdown()/isModified()/onChange are unaffected. ----
+  let printing = false;
+  const fillPrintSource = () => { printSrc.textContent = sourceMode ? srcText() : ''; };
+  function enterPrint() {
+    if (destroyed) return;
+    printing = true;
+    try { fillPrintSource(); swapNodesForPrint(editor); } catch { /* printing must never throw */ }
+  }
+  function leavePrint() {
+    printing = false;
+    try { restoreNodesAfterPrint(editor); printSrc.textContent = ''; } catch { /* ignore */ }
+  }
+  const onBeforePrint = () => enterPrint();
+  const onAfterPrint = () => leavePrint();
+  const printMq = typeof matchMedia === 'function' ? matchMedia('print') : null;
+  const onPrintMq = (e) => { if (e.matches) enterPrint(); else leavePrint(); };
+  window.addEventListener('beforeprint', onBeforePrint);
+  window.addEventListener('afterprint', onAfterPrint);
+  if (printMq && printMq.addEventListener) printMq.addEventListener('change', onPrintMq);
+  let prepP = null;
+  /** Resolves when all mermaid/math nodes are rendered and (dark theme) the light diagram variants are cached. Never rejects; 30 s cap. */
+  function prepareForPrint() {
+    if (prepP) return prepP;
+    const work = (async () => {
+      try {
+        flushEdits(editor);
+        fillPrintSource();
+        await prepareNodesForPrint(editor);
+        if (document.fonts && document.fonts.ready) await document.fonts.ready;
+        fillPrintSource();
+      } catch { /* best effort */ }
+    })();
+    const cap = new Promise((res) => setTimeout(res, 30000));
+    prepP = Promise.race([work, cap]).finally(() => { prepP = null; });
+    return prepP;
+  }
+  /** Optional cleanup (the afterprint event does the same): restores the on-screen diagrams. */
+  function afterPrint() { leavePrint(); }
+  /** Append " (url)" after http(s)/mailto links in print output. */
+  function setPrintLinks(on) { if (on) root.setAttribute('data-print-links', ''); else root.removeAttribute('data-print-links'); }
+
   function setSourceMode(on) {
     on = !!on;
     if (on === sourceMode) return;
@@ -143,9 +187,15 @@ export function createEditor(containerEl, { markdown = '', onChange, onWarnings,
     setTheme(t) { root.dataset.theme = t === 'dark' ? 'dark' : 'light'; refreshTheme(editor); }, // diagrams re-render with the matching mermaid theme
     focus() { sourceMode ? src.focus() : editor.commands.focus(); },
     setSourceMode,
+    prepareForPrint,
+    afterPrint,
+    setPrintLinks,
+    isPrinting: () => printing,
     isSourceMode: () => sourceMode,
     destroy() {
       destroyed = true; clearTimeout(timer);
+      window.removeEventListener('beforeprint', onBeforePrint); window.removeEventListener('afterprint', onAfterPrint);
+      if (printMq && printMq.removeEventListener) printMq.removeEventListener('change', onPrintMq);
       toolbar.destroy(); editor.destroy(); root.remove();
     },
     // escape hatch (tests/debugging)

@@ -104,6 +104,17 @@ function doDownload() {
   setStatus('Downloaded');
 }
 
+// Print / Save as PDF: Chrome's print dialog offers "Save as PDF", so window.print() needs no permission or library.
+let printing = false;
+async function doPrint() {
+  if (printing) return;
+  printing = true;
+  try { if (editor.prepareForPrint) await editor.prepareForPrint(); } // let diagrams/equations finish rendering first
+  catch (e) { setStatus('Print preparation failed: ' + e.message, 4000); }
+  finally { printing = false; }
+  window.print();
+}
+
 // ---------- Google Drive ----------
 function markEditorSaved(text) { if (editor.markSaved && editor.getMarkdown() === text) editor.markSaved(); } // reset the editor's byte-exact baseline (skip if the user kept typing)
 function afterDriveWrite(text, file) {
@@ -226,6 +237,7 @@ $('btn-open').onclick = doOpen;
 $('btn-save').onclick = doSave;
 $('btn-saveas').onclick = doSaveAs;
 $('btn-download').onclick = doDownload;
+$('btn-print').onclick = doPrint;
 $('btn-drive-open').onclick = doOpenDrive;
 $('btn-drive-save').onclick = doSaveDrive; // in place if the doc came from Drive, otherwise asks where to create it
 $('btn-theme').onclick = () => applyTheme(state.theme === 'dark' ? 'light' : 'dark');
@@ -235,6 +247,7 @@ document.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === 's') { e.preventDefault(); e.shiftKey ? doSaveAs() : doSave(); }
   else if (k === 'o') { e.preventDefault(); doOpen(); }
+  else if (k === 'p' && !e.shiftKey && !e.altKey) { e.preventDefault(); doPrint(); }
 });
 
 let dragDepth = 0;

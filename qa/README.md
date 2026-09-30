@@ -38,6 +38,7 @@ Helpers: `openDriveEditor(ext,{drive,identity,mock,...})` (lib/drive.mjs), `open
 | tests/07-content-script.spec.mjs | `file:///tmp/test.md` content-script button |
 | tests/08-screenshots.spec.mjs | light/dark/source screenshots |
 | tests/09-probes.spec.mjs | XSS/untrusted markdown, remote image, task-list layout, source sync, large doc, unicode, misc |
+| tests/12-print.spec.mjs | Print / Save as PDF: button, Ctrl/Cmd+P, print-media shell, PDF content (pdftotext/pdftoppm), dark->light, page breaks, long doc, Source mode, setPrintLinks, safety |
 | tests/11-mermaid-math.spec.mjs | Mermaid + KaTeX: render, paste, byte-identical save, source toggles, dark mode, malformed, false positives, security (strict/CSP/no network/fonts), lazy chunks, existing features |
 | tests/10-drive.spec.mjs | Google Drive: mock api + real createDriveApi() against an in-process Drive emulator (lib/drive.mjs: FakeDrive, chrome.identity stub, installMock) |
 
