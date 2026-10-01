@@ -20,6 +20,22 @@ body { display: flex; flex-direction: column; font: 14px/1.4 system-ui, sans-ser
 @media print {
   html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
   body { display: block; }
-  #filebar, #dropzone, #drive-status, #status, .gdui-overlay, .gdui-dialog { display: none !important; }
+  .drafts-overlay, #filebar, #dropzone, #drive-status, #status, .gdui-overlay, .gdui-dialog { display: none !important; }
   #editor-host { overflow: visible !important; height: auto !important; min-height: 0; flex: none; }
 }
+
+/* Unsaved drafts dialog */
+.drafts-overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.45); z-index:98; }
+.drafts-box { width:min(560px, 92vw); max-height:80vh; overflow:auto; padding:16px 18px; border-radius:10px; background:var(--bar-bg); color:var(--bar-fg); border:1px solid var(--bar-border); box-shadow:0 10px 30px rgba(0,0,0,.35); }
+.drafts-box h2 { margin:0 0 4px; font-size:16px; }
+.drafts-hint { margin:0 0 10px; opacity:.7; font-size:12px; }
+.drafts-list { list-style:none; margin:0 0 12px; padding:0; display:flex; flex-direction:column; gap:8px; }
+.drafts-item { display:flex; gap:10px; align-items:center; justify-content:space-between; padding:8px 10px; border:1px solid var(--bar-border); border-radius:8px; background:var(--btn-bg); }
+.drafts-main { min-width:0; flex:1; overflow:hidden; }
+.drafts-main strong { display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom; }
+.drafts-when { opacity:.6; font-size:12px; }
+.drafts-snippet { opacity:.75; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.drafts-actions { display:flex; gap:6px; flex:none; }
+.drafts-empty { opacity:.7; padding:6px 2px; }
+.drafts-box button { padding:5px 10px; border:1px solid var(--bar-border); background:var(--btn-bg); color:var(--bar-fg); border-radius:6px; cursor:pointer; font:inherit; }
+.drafts-box button:hover { border-color: var(--accent); }

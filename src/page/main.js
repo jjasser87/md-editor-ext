@@ -3,13 +3,15 @@ import * as files from './files.js';
 import { createDriveApi } from '../drive/api.js';
 import { openDriveDialog, saveToDriveDialog, confirmConflict, createDriveStatus, statusForError } from '../drive-ui/index.js';
 
+import { SLOT_PREFIX, LEGACY_KEYS, holdSlot, holdNumber, openDraftsDialog, countDrafts } from './drafts.js';
+
 const $ = (id) => document.getElementById(id);
 const DRAFT_KEY = 'mdwe.draft';           // untitled (never opened/saved) document
 const FILE_DRAFT_KEY = 'mdwe.draft.file'; // draft of a document that came from a file (separate slot so it can't clobber the untitled draft)
 const THEME_KEY = 'mdwe.theme';
 const AUTOSAVE_MS = 800;
 
-const state = { loaded: false, drive: null, handle: null, name: 'Untitled.md', savedText: '', dirty: false, theme: 'light', source: false };
+const state = { slot: null, loaded: false, drive: null, handle: null, name: 'Untitled.md', savedText: '', dirty: false, theme: 'light', source: false };
 let editor = null;
 let draftTimer = null;
 let driveApi = createDriveApi();
@@ -70,7 +72,8 @@ function saveDraft() {
     .then(() => setStatus('Draft autosaved', 1200))
     .catch(() => setStatus('Draft autosave failed'));
 }
-function draftKey() { return state.loaded ? FILE_DRAFT_KEY : DRAFT_KEY; }
+// A tab opened from the toolbar icon (?new=N / ?doc=ID) has its own draft slot; a plain page load keeps the two older shared slots.
+function draftKey() { return state.slot || (state.loaded ? FILE_DRAFT_KEY : DRAFT_KEY); }
 function clearDraft() { clearTimeout(draftTimer); store.remove(draftKey()); }
 
 async function doOpen() {
@@ -216,8 +219,38 @@ async function init() {
   const innerSrc = document.querySelector('.mdx-toolbar [data-cmd="source"]');
   if (innerSrc) new MutationObserver(syncSourceUi).observe(innerSrc, { attributes: true, attributeFilter: ['aria-pressed'] });
 
-  // Priority: ?src=file:// URL  >  saved draft  >  empty doc
-  const src = new URLSearchParams(location.search).get('src');
+  // Priority: ?src=file:// URL  >  per-tab note (?new / ?doc)  >  saved shared draft  >  empty doc
+  const params = new URLSearchParams(location.search);
+  const src = params.get('src');
+  let docId = params.get('doc');
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (docId && !UUID.test(docId)) docId = null;
+  if (!src && (docId || params.has('new'))) {
+    let n = parseInt(params.get('n') || params.get('new'), 10); if (!(n >= 1 && n <= 999999)) n = 1;
+    let copyFrom = null;
+    if (!docId) { docId = crypto.randomUUID(); await holdSlot(SLOT_PREFIX + docId); }
+    else if (!(await holdSlot(SLOT_PREFIX + docId))) { // another tab already edits this note (Duplicate tab): work on a copy, never two editors on one slot
+      copyFrom = SLOT_PREFIX + docId; docId = crypto.randomUUID(); await holdSlot(SLOT_PREFIX + docId);
+    }
+    history.replaceState(null, '', '?doc=' + docId + '&n=' + n); // reload / restored tab keeps this note
+    state.slot = SLOT_PREFIX + docId; state.name = 'Untitled-' + n + '.md';
+    holdNumber(n);
+    const mine = await storeGet(copyFrom || state.slot);
+    if (mine && mine.text) {
+      suppress = true; editor.setMarkdown(mine.text); suppress = false;
+      state.name = mine.name || state.name; state.savedText = ''; state.dirty = true; state.drive = mine.drive || null;
+      renderTitle(); setStatus(copyFrom ? 'This note is open in another tab: working on a copy' : 'Restored autosaved draft', 4000);
+      if (copyFrom) saveDraft();
+    } else {
+      renderTitle();
+      const k = await countDrafts(state.slot).catch(() => 0);
+      if (k) setStatus(k + ' unsaved draft' + (k > 1 ? 's' : '') + ' from earlier: see Drafts', 6000);
+    }
+    editor.focus && editor.focus();
+    refreshDraftCount();
+    return;
+  }
+  for (const k of LEGACY_KEYS) holdSlot(k, { shared: true }); // plain and ?src= tabs may write either shared slot: mark them as open
   const untitledDraft = await storeGet(DRAFT_KEY);
   const fileDraft = await storeGet(FILE_DRAFT_KEY);
   const draft = untitledDraft || fileDraft;
@@ -231,8 +264,17 @@ async function init() {
     state.drive = draft.drive || null; // restored Drive-backed draft keeps its link; the conflict check protects the remote copy
     renderTitle(); setStatus('Restored autosaved draft', 4000);
   } else renderTitle();
+  refreshDraftCount();
 }
 
+async function refreshDraftCount() {
+  try { const k = await countDrafts(state.slot || (state.loaded ? FILE_DRAFT_KEY : DRAFT_KEY)); $('btn-drafts').textContent = k ? 'Drafts (' + k + ')' : 'Drafts'; } catch { /* count is cosmetic */ }
+}
+function newNote() { chrome.runtime.sendMessage({ type: 'new-note' }); }
+chrome.storage.onChanged.addListener((ch) => { if (Object.keys(ch).some((k) => k.indexOf('mdwe.draft') === 0)) refreshDraftCount(); });
+
+$('btn-new').onclick = newNote;
+$('btn-drafts').onclick = () => openDraftsDialog({ ownKey: draftKey(), onOpen: (id) => chrome.tabs.create({ url: chrome.runtime.getURL('editor/index.html') + '?doc=' + id }), onChange: () => { refreshDraftCount(); setTimeout(refreshDraftCount, 800); setTimeout(refreshDraftCount, 2800); }, onClose: () => editor.focus && editor.focus() });
 $('btn-open').onclick = doOpen;
 $('btn-save').onclick = doSave;
 $('btn-saveas').onclick = doSaveAs;
@@ -243,6 +285,7 @@ $('btn-drive-save').onclick = doSaveDrive; // in place if the doc came from Driv
 $('btn-theme').onclick = () => applyTheme(state.theme === 'dark' ? 'light' : 'dark');
 
 document.addEventListener('keydown', (e) => {
+  if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.key.toLowerCase() === 'n') { e.preventDefault(); newNote(); return; }
   if (!(e.ctrlKey || e.metaKey)) return;
   const k = e.key.toLowerCase();
   if (k === 's') { e.preventDefault(); e.shiftKey ? doSaveAs() : doSave(); }

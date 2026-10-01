@@ -51,3 +51,6 @@ npm run release    # build + dist/md-editor-ext.zip
 
 ## Known limits
 See `EDITOR_NOTES.md` and `BUGS.md` (relative image paths in files opened via `?src=` don't resolve; remote images load when a document is opened).
+
+## New note per click
+Every click on the toolbar icon (or the **New** button / Alt+N) opens a new tab with its own empty note named `Untitled-N.md`. Each such tab has its own draft slot (`mdwe.draft.doc.<id>` in `chrome.storage.local`), so notes never overwrite each other. A reload keeps the note (the tab URL carries its id). **Drafts** in the file bar lists unsaved notes that are not open in any tab, so a closed tab's note can be reopened or discarded. Plain page loads (`editor/index.html` with no query) and `?src=` still use the older shared draft slots. No new permissions.
