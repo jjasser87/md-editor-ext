@@ -146,3 +146,20 @@
 .gdui-state-host .gdui-state { flex: 1 1 auto; }
 .gdui-crumbs > .gdui-crumbs { flex: 1 1 auto; min-width: 0; }
 .gdui-status-live { display: inline-flex; max-width: 100%; }
+
+/* folder search (save dialog) */
+.gdui-searchbox { position: relative; margin: 0 0 6px; }
+.gdui-foldersearch { padding-right: 32px; }
+.gdui-foldersearch::-webkit-search-cancel-button, .gdui-foldersearch::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
+.gdui-clear {
+  appearance: none; position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 22px; height: 22px; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; color: var(--gd-muted); font: 16px/22px system-ui, sans-serif; text-align: center; cursor: pointer;
+}
+.gdui-clear:hover { background: var(--gd-hover); color: var(--gd-fg); }
+.gdui-clear:focus-visible { outline: 2px solid var(--gd-accent); outline-offset: 0; }
+.gdui-subhead { padding: 4px 12px; background: var(--gd-soft); border-bottom: 1px solid var(--gd-border); color: var(--gd-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.gdui-ftext { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.gdui-ftext > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gdui-fpath { color: var(--gd-muted); font-size: 11px; }
+.gdui-result-row, .gdui-recent-row { min-height: 40px; }
+.gdui-row[aria-selected="true"] .gdui-fpath { color: var(--gd-fg); }

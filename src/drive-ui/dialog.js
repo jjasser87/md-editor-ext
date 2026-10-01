@@ -258,6 +258,9 @@ function validateName(name) {
 /**
  * saveToDriveDialog({ api, defaultName, theme }) -> Promise<{name, parentId?}|null>
  * parentId is omitted for "My Drive" (root). Folder chooser is shown only if api.listFolders exists.
+ * The chooser has a folder search box (api.listFolders({ query, pageToken }), debounced 300 ms; empty query = normal browsing) and,
+ * if api.getRecentFolders exists, a "Recent" section at the My Drive root. Picking a search/recent result makes that folder the
+ * destination (breadcrumb = one synthetic crumb "<path> / <name>") and then lists its subfolders. "↑ Up" from such a crumb goes to My Drive.
  */
 export function saveToDriveDialog({ api, defaultName = 'Untitled.md', theme } = {}) {
   const m = createModal({ theme, title: 'Save to Drive', className: 'gdui-narrow', cancelValue: null });
@@ -269,23 +272,30 @@ export function saveToDriveDialog({ api, defaultName = 'Untitled.md', theme } = 
   m.body.append(h('div', {}, h('label', { class: 'gdui-label', for: nameId, text: 'File name' }), input, hint, errEl));
 
   const hasFolders = typeof (api && api.listFolders) === 'function';
-  const path = [{ id: undefined, name: 'My Drive' }]; // stack; last = current folder
-  let fSeq = 0, fToken = null, fBusy = false;
-  let folderUl, fb, crumbs, upBtn, fMore, fState, foldersWrap;
+  const ROOT = () => ({ id: undefined, name: 'My Drive' });
+  const path = [ROOT()]; // stack; last = current folder. path[0] may be a synthetic crumb ({synthetic:true}) after picking a search result.
+  const atRoot = () => path.length === 1 && path[0].id === undefined && !path[0].synthetic;
+  let fSeq = 0, fToken = null, fBusy = false, query = '', timer = null, shown = 'browse', moved = false, needRefocus = false;
+  let folderUl, fb, crumbs, upBtn, fMore, fState, foldersWrap, search, clearBtn;
   if (hasFolders) {
     crumbs = h('div', { class: 'gdui-crumbs' });
     upBtn = h('button', { type: 'button', class: 'gdui-btn gdui-up', text: '↑ Up', 'aria-label': 'Up one folder', 'data-action': 'up', onClick: goUp });
-    folderUl = h('ul', { class: 'gdui-list', role: 'listbox', 'aria-label': 'Folders (Enter opens the folder)', tabindex: '0' });
+    folderUl = h('ul', { class: 'gdui-list', role: 'listbox', 'aria-label': 'Folders (Enter opens the folder)', tabindex: '0', id: uid('gdui-flist') });
+    search = h('input', { type: 'search', class: 'gdui-input gdui-foldersearch', placeholder: 'Search folders…', 'aria-label': 'Search folders', 'aria-controls': folderUl.id, 'data-role': 'folder-search', autocomplete: 'off', spellcheck: 'false' });
+    clearBtn = h('button', { type: 'button', class: 'gdui-clear', text: '×', 'aria-label': 'Clear search', title: 'Clear search', 'data-action': 'clear-search', hidden: true, onClick: () => { clearSearch(); search.focus(); } });
     fMore = h('div', { class: 'gdui-more', hidden: true });
     fState = h('div', { class: 'gdui-state-host', hidden: true });
     foldersWrap = h('div', { class: 'gdui-folders' },
-      h('span', { class: 'gdui-label', text: 'Location' }), h('div', { class: 'gdui-crumbs' }, crumbs, upBtn),
+      h('span', { class: 'gdui-label', text: 'Location' }),
+      h('div', { class: 'gdui-searchbox' }, search, clearBtn),
+      h('div', { class: 'gdui-crumbs' }, crumbs, upBtn),
       h('div', { class: 'gdui-listwrap' }, folderUl, fState, fMore));
-    // (crumbs is inside the flex row above)
     m.body.append(foldersWrap);
-    fb = createListbox(folderUl, { onActivate: (f) => enter(f) });
+    // list data = { kind: 'folder' | 'result' | 'recent', f }: folders are entered, results/recents become the destination.
+    fb = createListbox(folderUl, { owners: [search], onActivate: (d) => activate(d) });
   }
   m.body.append(live);
+  m.onClose = () => { clearTimeout(timer); fSeq++; };
 
   const signInBtn = h('button', { type: 'button', class: 'gdui-btn', text: 'Sign in with Google', 'data-action': 'signin', hidden: true, onClick: doSignIn });
   const cancelBtn = button('Cancel', { onClick: () => m.close(null), id: 'cancel' });
@@ -310,31 +320,74 @@ export function saveToDriveDialog({ api, defaultName = 'Untitled.md', theme } = 
   input.addEventListener('input', () => { errEl.hidden = true; input.removeAttribute('aria-invalid'); refreshHint(); });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); submit(); return; }
-    if (fb && fb.key(e, { fromInput: true })) return;
+    if (fb && fb.key(e, { fromInput: true })) { moved = true; return; }
   });
 
   // ---- folders ----
+  const syncSearchUi = () => { clearBtn.hidden = !search.value; upBtn.disabled = atRoot() || !!search.value.trim(); };
   function renderCrumbs() {
     crumbs.textContent = '';
-    crumbs.append(h('span', { text: 'Saving in:' }), h('strong', { text: path.map((p) => p.name).join(' / ') }));
-    upBtn.disabled = path.length <= 1;
+    const full = path.map((p) => p.name).join(' / ');
+    crumbs.append(h('span', { text: 'Saving in:' }), h('strong', { class: 'gdui-dest', text: full, title: full }));
+    syncSearchUi();
     refreshHint();
   }
-  function goUp() { if (path.length > 1) { path.pop(); loadFolders(true); } }
-  function enter(f) { path.push({ id: f.id, name: f.name }); loadFolders(true); }
-  function showFolderState(opts) { fb.clear(); folderUl.hidden = true; fMore.hidden = true; fState.textContent = ''; fState.hidden = false; fState.className = 'gdui-state-host gdui-state-fill'; fState.append(statePanel(opts)); }
+  function cancelSearchText() { clearTimeout(timer); timer = null; search.value = ''; query = ''; syncSearchUi(); }
+  function goUp() {
+    if (path.length > 1) path.pop();
+    else if (path[0].synthetic) path[0] = ROOT(); // parents of a picked search result are unknown -> My Drive
+    else return;
+    cancelSearchText(); loadFolders(true);
+  }
+  function enter(f) { path.push({ id: f.id, name: f.name }); cancelSearchText(); loadFolders(true); }
+  /** Make a search/recent result the destination, clear the search, then browse its subfolders. */
+  function pick(f) {
+    path.length = 0; path.push({ id: f.id, name: f.path ? `${f.path} / ${f.name}` : f.name, synthetic: true });
+    cancelSearchText(); loadFolders(true);
+  }
+  const activate = (d) => (d.kind === 'folder' ? enter(d.f) : pick(d.f));
+  function applyQuery(q) { if (q === query) return; query = q; loadFolders(true); }
+  function clearSearch() { const had = !!query; cancelSearchText(); if (had) loadFolders(true); } // back to normal browsing at the current location
+
+  function showFolderState(opts) {
+    fb.clear(); folderUl.hidden = true; fMore.hidden = true; fState.textContent = ''; fState.hidden = false; fState.className = 'gdui-state-host gdui-state-fill'; fState.append(statePanel(opts));
+    live.textContent = [opts.title, opts.message].filter(Boolean).join('. ');
+    settleFocus();
+  }
+  // If the focused list was hidden/replaced, park focus somewhere useful instead of losing it to <body>.
+  function settleFocus() {
+    if (!needRefocus || m.closed) return;
+    const a = document.activeElement;
+    if (a && a !== document.body && m.dialog.contains(a) && a !== m.dialog) { needRefocus = false; return; }
+    needRefocus = false; (folderUl.hidden ? search : folderUl).focus();
+  }
   function renderFMore(error) {
     fMore.textContent = '';
     if (!fToken) { fMore.hidden = true; return; }
     fMore.hidden = false;
     if (error) fMore.append(h('span', { class: 'gdui-err', text: 'Couldn\u2019t load more folders.' }));
     if (fBusy) fMore.append(h('span', { class: 'gdui-spinner gdui-sm', 'aria-hidden': 'true' }));
-    else fMore.append(h('button', { type: 'button', class: 'gdui-btn', text: error ? 'Retry' : 'Load more', onClick: () => loadFolders(false) }));
+    else fMore.append(h('button', { type: 'button', class: 'gdui-btn', text: error ? 'Retry' : 'Load more', 'data-action': 'more', onClick: () => loadFolders(false) }));
+  }
+  const subhead = (text) => folderUl.append(h('li', { class: 'gdui-subhead', role: 'presentation', text }));
+  function renderFolderRow(f, kind) {
+    const full = f.path ? `${f.path} / ${f.name}` : f.name;
+    const text = h('span', { class: 'gdui-ftext' }, h('span', { class: 'gdui-fn', text: f.name }));
+    if (kind !== 'folder' && f.path) text.append(h('span', { class: 'gdui-fpath', text: f.path }));
+    const row = h('li', { class: 'gdui-row gdui-folder-row' + (kind === 'folder' ? '' : ' gdui-' + kind + '-row'), title: kind === 'folder' ? f.name : full, 'data-folder-id': f.id, 'data-kind': kind },
+      h('span', { class: 'gdui-fname' }, icon('folder'), text));
+    fb.add({ kind, f }, row);
   }
   async function loadFolders(reset) {
+    const searching = !!query, q = query;
     const my = ++fSeq; fBusy = true; renderCrumbs();
-    if (reset) { fToken = null; showFolderState({ title: 'Loading folders…', spinner: true }); } else renderFMore();
-    if (navigator.onLine === false && reset) { fBusy = false; showFolderState({ title: 'You\u2019re offline', message: 'Folders can\u2019t be listed offline. You can still save to the selected location.', error: true, actions: [{ id: 'retry', label: 'Retry', onClick: () => loadFolders(true) }] }); return; }
+    if (reset) { needRefocus = needRefocus || document.activeElement === folderUl || fState.contains(document.activeElement); fToken = null; moved = false; }
+    if (reset) showFolderState(searching ? { title: 'Searching…', spinner: true } : { title: 'Loading folders…', spinner: true }); else renderFMore();
+    if (navigator.onLine === false && reset) {
+      fBusy = false;
+      showFolderState({ title: 'You\u2019re offline', message: (searching ? 'Folders can\u2019t be searched offline.' : 'Folders can\u2019t be listed offline.') + ' You can still save to the selected location.', error: true, actions: [{ id: 'retry', label: 'Retry', onClick: () => loadFolders(true) }] });
+      return;
+    }
     try {
       if (reset && typeof api.isSignedIn === 'function') {
         const ok = await call(() => api.isSignedIn()); if (my !== fSeq) return;
@@ -342,28 +395,58 @@ export function saveToDriveDialog({ api, defaultName = 'Untitled.md', theme } = 
         if (!ok) { fBusy = false; showFolderState({ title: 'Sign in to Google Drive', message: 'Sign in to choose a folder and save the file.', actions: [{ id: 'signin', label: 'Sign in with Google', primary: true, onClick: doSignIn }] }); return; }
       }
       const cur = path[path.length - 1];
-      const res = await call(() => api.listFolders({ parentId: cur.id || 'root', pageToken: reset ? undefined : fToken }));
-      if (my !== fSeq) return;
+      const pageToken = reset ? undefined : fToken;
+      const wantRecent = reset && !searching && atRoot() && typeof api.getRecentFolders === 'function';
+      const [res, recent] = await Promise.all([
+        call(() => api.listFolders(searching ? { query: q, pageToken } : { parentId: cur.id || 'root', pageToken })),
+        wantRecent ? call(() => api.getRecentFolders()).then((r) => (Array.isArray(r) ? r.filter((f) => f && f.id && f.name).slice(0, 5) : []), () => []) : [],
+      ]);
+      if (my !== fSeq) return; // stale: a newer query / navigation / clear superseded this request
       fBusy = false; fToken = (res && res.nextPageToken) || null;
       const list = (res && (res.folders || res.files)) || [];
       if (reset) {
-        fb.clear(); fState.hidden = true; fState.textContent = ''; folderUl.hidden = false;
-        if (!list.length) { showFolderState({ title: 'No subfolders', message: 'This location has no folders. The file will be saved here.' }); return; }
+        fb.clear(); fState.hidden = true; fState.textContent = ''; folderUl.hidden = false; shown = searching ? 'search' : 'browse';
+        folderUl.setAttribute('aria-label', searching ? 'Folder search results (Enter selects the folder)' : 'Folders (Enter opens the folder)');
+        if (!list.length && !recent.length) {
+          showFolderState(searching
+            ? { title: `No folders match \u201c${q}\u201d`, message: 'Try a different name. You can still save to the selected location.' }
+            : { title: 'No subfolders', message: 'This location has no folders. The file will be saved here.' });
+          return;
+        }
+        if (searching) subhead('Search results');
+        if (recent.length) { subhead('Recent'); recent.forEach((f) => renderFolderRow(f, 'recent')); subhead('Folders'); if (!list.length) subhead('No subfolders here'); }
       }
-      for (const f of list) {
-        const row = h('li', { class: 'gdui-row gdui-folder-row', title: f.name }, h('span', { class: 'gdui-fname' }, icon('folder'), h('span', { text: f.name })));
-        fb.add(f, row);
-      }
+      for (const f of list) renderFolderRow(f, searching ? 'result' : 'folder');
       renderFMore();
       if (reset) fb.select(0, { scroll: false });
-      live.textContent = `${list.length} folder${list.length === 1 ? '' : 's'}`;
+      const n = list.length;
+      live.textContent = reset
+        ? (searching ? `${n} folder${n === 1 ? '' : 's'} found for \u201c${q}\u201d` : `${n} folder${n === 1 ? '' : 's'}`) + (fToken ? ', more available' : '')
+        : `${n} more loaded, ${fb.items.length} total`;
+      settleFocus();
     } catch (e) {
       if (my !== fSeq) return; fBusy = false;
       if (!reset) return renderFMore(e);
       const c = classifyError(e);
       if (c.kind === 'signedout') { signInBtn.hidden = false; saveBtn.disabled = true; showFolderState({ title: c.title, message: c.message, actions: [{ id: 'signin', label: 'Sign in with Google', primary: true, onClick: doSignIn }] }); }
-      else showFolderState({ title: c.title, message: c.message + ' You can still save to the selected location.', error: true, actions: c.kind === 'notconfigured' ? [] : [{ id: 'retry', label: 'Retry', onClick: () => loadFolders(true) }] });
+      else showFolderState({ title: searching ? (c.kind === 'error' ? 'Folder search failed' : c.title) : c.title, message: c.message + ' You can still save to the selected location.', error: true, actions: c.kind === 'notconfigured' ? [] : [{ id: 'retry', label: 'Retry', onClick: () => loadFolders(true) }] });
     }
+  }
+  if (hasFolders) {
+    search.addEventListener('input', () => {
+      syncSearchUi(); clearTimeout(timer);
+      timer = setTimeout(() => { timer = null; applyQuery(search.value.trim()); }, DEBOUNCE_MS);
+    });
+    search.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && search.value) { e.preventDefault(); e.stopPropagation(); clearSearch(); return; } // first Esc clears; second (empty) closes the dialog
+      if (fb.key(e, { fromInput: true })) { moved = true; return; }
+      if (e.key === 'Enter') {
+        e.preventDefault(); // never saves from here: Enter in the file-name field saves
+        if (timer) { clearTimeout(timer); timer = null; const q = search.value.trim(); if (q !== query) { applyQuery(q); return; } } // flush the pending query first
+        const sel = fb.selected();
+        if (sel && (sel.kind === 'result' || moved)) activate(sel); // browse/recent rows need an explicit arrow-key selection so Enter on an untouched box does nothing
+      }
+    });
   }
   async function doSignIn() {
     signInBtn.disabled = true;

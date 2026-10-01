@@ -12,7 +12,9 @@ export class DriveError extends Error {
 
 const q = (s) => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
-export function createDriveApi({ identity = globalThis.chrome && chrome.identity, fetch: f = globalThis.fetch.bind(globalThis) } = {}) {
+export function createDriveApi({ identity = globalThis.chrome && chrome.identity, fetch: f = globalThis.fetch.bind(globalThis), storage = globalThis.chrome && chrome.storage && chrome.storage.local } = {}) {
+  const RECENT_KEY = 'driveRecentFolders', RECENT_MAX = 8;
+  const folderCache = new Map(); // id -> Promise<{ name, parents } | null> (failures are evicted)
   let cachedToken = null;
 
   function getTokenRaw(interactive) {
@@ -69,6 +71,29 @@ export function createDriveApi({ identity = globalThis.chrome && chrome.identity
 
   const norm = (x) => ({ id: x.id, name: x.name, mimeType: x.mimeType, modifiedTime: x.modifiedTime, size: x.size != null ? Number(x.size) : undefined, version: x.version, parents: x.parents, canEdit: !x.capabilities || x.capabilities.canEdit !== false });
 
+  // Folder name + parent ids. The in-flight promise is cached so concurrent lookups of one parent share one request (#34);
+  // a failed lookup is evicted so a transient error is retried next time instead of sticking as "unresolvable" (#35).
+  function folderInfo(id) {
+    if (folderCache.has(id)) return folderCache.get(id);
+    const pr = json(`${API}/files/${encodeURIComponent(id)}?fields=${encodeURIComponent('id,name,parents')}&supportsAllDrives=true`)
+      .then((j) => ({ name: j.name, parents: j.parents || [] }))
+      .catch(() => { folderCache.delete(id); return null; });
+    folderCache.set(id, pr);
+    return pr;
+  }
+  // "My Drive / Projects / 2026" for a folder whose parent ids are given (max 8 levels; undefined if unknown).
+  async function parentPath(parents) {
+    const names = [];
+    let cur = parents && parents[0];
+    for (let d = 0; cur && d < 8; d++) {
+      const info = await folderInfo(cur);
+      if (!info) break;
+      names.unshift(info.name);
+      cur = info.parents[0];
+    }
+    return names.length ? names.join(' / ') : undefined;
+  }
+
   const api = {
     async isSignedIn() { try { await token(false); return true; } catch { return false; } },
     async signIn() { await dropToken(); cachedToken = await getTokenRaw(true); return true; }, // drop Chrome's cached token first so a re-sign-in really re-consents
@@ -97,11 +122,32 @@ export function createDriveApi({ identity = globalThis.chrome && chrome.identity
       const files = (j.files || []).filter((x) => /\.(md|markdown|mdown)$/i.test(x.name) || /markdown/.test(x.mimeType || '')).map(norm);
       return { files, nextPageToken: j.nextPageToken || null };
     },
-    async listFolders({ parentId = 'root', pageToken } = {}) {
-      const p = new URLSearchParams({ q: `mimeType = 'application/vnd.google-apps.folder' and trashed = false and '${q(parentId)}' in parents`, orderBy: 'name', pageSize: '100', fields: 'nextPageToken,files(id,name)', supportsAllDrives: 'true', includeItemsFromAllDrives: 'true' });
+    // Browse (no query): children of parentId. With a non-empty `query`: search ALL folders by name (incl. shared drives),
+    // ignore parentId, and attach `path` ("My Drive / Projects / 2026") to each result so same-named folders are distinguishable.
+    async listFolders({ parentId = 'root', pageToken, query = '' } = {}) {
+      const term = String(query || '').trim();
+      const parts = ["mimeType = 'application/vnd.google-apps.folder'", 'trashed = false'];
+      if (term) parts.push(`name contains '${q(term)}'`); else parts.push(`'${q(parentId)}' in parents`);
+      const p = new URLSearchParams({ q: parts.join(' and '), orderBy: term ? 'name_natural' : 'name', pageSize: term ? '50' : '100', fields: `nextPageToken,files(id,name${term ? ',parents' : ''})`, supportsAllDrives: 'true', includeItemsFromAllDrives: 'true' });
+      if (term) p.set('corpora', 'allDrives'); // search shared drives the user hasn't opened yet too (#33)
       if (pageToken) p.set('pageToken', pageToken);
       const j = await json(`${API}/files?${p}`);
-      return { folders: j.files || [], nextPageToken: j.nextPageToken || null };
+      let folders = j.files || [];
+      if (term) folders = await Promise.all(folders.map(async (x) => ({ id: x.id, name: x.name, path: await parentPath(x.parents) })));
+      return { folders, nextPageToken: j.nextPageToken || null, ...(j.incompleteSearch ? { incompleteSearch: true } : {}) };
+    },
+    // Most recently used save destinations, newest first: [{ id, name, path? }].
+    async getRecentFolders() {
+      if (!storage) return [];
+      try { const r = await storage.get(RECENT_KEY); return Array.isArray(r && r[RECENT_KEY]) ? r[RECENT_KEY] : []; } catch { return []; }
+    },
+    async addRecentFolder(f) {
+      if (!storage || !f || !f.id || f.id === 'root') return;
+      try {
+        const cur = (await api.getRecentFolders()).filter((x) => x.id !== f.id);
+        cur.unshift({ id: f.id, name: f.name, ...(f.path ? { path: f.path } : {}) });
+        await storage.set({ [RECENT_KEY]: cur.slice(0, RECENT_MAX) });
+      } catch { /* recents are best-effort */ }
     },
 
     async getMetadata(id) { return norm(await json(`${API}/files/${encodeURIComponent(id)}?fields=${encodeURIComponent(FILE_FIELDS)}&supportsAllDrives=true`)); },
@@ -134,7 +180,9 @@ export function createDriveApi({ identity = globalThis.chrome && chrome.identity
       const res = await request(`${UPLOAD}/files?uploadType=multipart&supportsAllDrives=true&fields=${encodeURIComponent(FILE_FIELDS)}`, {
         method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${b}` }, body,
       });
-      return norm(await res.json());
+      const created = norm(await res.json());
+      if (parentId) folderInfo(parentId).then(async (info) => { if (info) await api.addRecentFolder({ id: parentId, name: info.name, path: await parentPath(info.parents) }); });
+      return created;
     },
   };
   return api;

@@ -1,0 +1,549 @@
+:root { --bar-bg:#f3f4f6; --bar-fg:#111827; --bar-border:#d1d5db; --btn-bg:#fff; --accent:#2563eb; }
+:root[data-theme="dark"] { --bar-bg:#1f2937; --bar-fg:#f3f4f6; --bar-border:#374151; --btn-bg:#111827; --accent:#60a5fa; color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; font: 14px/1.4 system-ui, sans-serif; background: var(--bar-bg); color: var(--bar-fg); }
+#filebar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 12px; background:var(--bar-bg); border-bottom:1px solid var(--bar-border); }
+#filebar .group { display:flex; align-items:center; gap:6px; }
+#filebar button { padding:5px 10px; border:1px solid var(--bar-border); background:var(--btn-bg); color:var(--bar-fg); border-radius:6px; cursor:pointer; font:inherit; }
+#filebar button:hover { border-color: var(--accent); }
+#filebar button[aria-pressed="true"] { background: var(--accent); color:#fff; border-color: var(--accent); }
+#filename { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; text-align:center; }
+#filename.dirty::after { content:" •"; color: var(--accent); }
+#status { opacity:.7; font-size:12px; }
+#editor-host { flex:1; min-height:0; overflow:auto; }
+#dropzone { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(37,99,235,.85); color:#fff; font:600 24px system-ui; z-index:99; }
+#dropzone[hidden] { display:none; }
+
+/* Print / Save as PDF (page shell only; the document's own print styles live in the editor CSS).
+   The page is a fixed-height flex column with a scrolling editor, which would print as a single clipped page. */
+@media print {
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+  body { display: block; }
+  #filebar, #dropzone, #drive-status, #status, .gdui-overlay, .gdui-dialog { display: none !important; }
+  #editor-host { overflow: visible !important; height: auto !important; min-height: 0; flex: none; }
+}
+@font-face{font-display:block;font-family:KaTeX_AMS;font-style:normal;font-weight:400;src:url(./KaTeX_AMS-Regular-BQhdFMY1.woff2) format("woff2"),url(./KaTeX_AMS-Regular-DMm9YOAa.woff) format("woff"),url(./KaTeX_AMS-Regular-DRggAlZN.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Caligraphic;font-style:normal;font-weight:700;src:url(./KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2) format("woff2"),url(./KaTeX_Caligraphic-Bold-BEiXGLvX.woff) format("woff"),url(./KaTeX_Caligraphic-Bold-ATXxdsX0.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Caligraphic;font-style:normal;font-weight:400;src:url(./KaTeX_Caligraphic-Regular-Di6jR-x-.woff2) format("woff2"),url(./KaTeX_Caligraphic-Regular-CTRA-rTL.woff) format("woff"),url(./KaTeX_Caligraphic-Regular-wX97UBjC.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Fraktur;font-style:normal;font-weight:700;src:url(./KaTeX_Fraktur-Bold-CL6g_b3V.woff2) format("woff2"),url(./KaTeX_Fraktur-Bold-BsDP51OF.woff) format("woff"),url(./KaTeX_Fraktur-Bold-BdnERNNW.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Fraktur;font-style:normal;font-weight:400;src:url(./KaTeX_Fraktur-Regular-CTYiF6lA.woff2) format("woff2"),url(./KaTeX_Fraktur-Regular-Dxdc4cR9.woff) format("woff"),url(./KaTeX_Fraktur-Regular-CB_wures.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Main;font-style:normal;font-weight:700;src:url(./KaTeX_Main-Bold-Cx986IdX.woff2) format("woff2"),url(./KaTeX_Main-Bold-Jm3AIy58.woff) format("woff"),url(./KaTeX_Main-Bold-waoOVXN0.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Main;font-style:italic;font-weight:700;src:url(./KaTeX_Main-BoldItalic-DxDJ3AOS.woff2) format("woff2"),url(./KaTeX_Main-BoldItalic-SpSLRI95.woff) format("woff"),url(./KaTeX_Main-BoldItalic-DzxPMmG6.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Main;font-style:italic;font-weight:400;src:url(./KaTeX_Main-Italic-NWA7e6Wa.woff2) format("woff2"),url(./KaTeX_Main-Italic-BMLOBm91.woff) format("woff"),url(./KaTeX_Main-Italic-3WenGoN9.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Main;font-style:normal;font-weight:400;src:url(./KaTeX_Main-Regular-B22Nviop.woff2) format("woff2"),url(./KaTeX_Main-Regular-Dr94JaBh.woff) format("woff"),url(./KaTeX_Main-Regular-ypZvNtVU.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Math;font-style:italic;font-weight:700;src:url(./KaTeX_Math-BoldItalic-CZnvNsCZ.woff2) format("woff2"),url(./KaTeX_Math-BoldItalic-iY-2wyZ7.woff) format("woff"),url(./KaTeX_Math-BoldItalic-B3XSjfu4.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Math;font-style:italic;font-weight:400;src:url(./KaTeX_Math-Italic-t53AETM-.woff2) format("woff2"),url(./KaTeX_Math-Italic-DA0__PXp.woff) format("woff"),url(./KaTeX_Math-Italic-flOr_0UB.ttf) format("truetype")}@font-face{font-display:block;font-family:"KaTeX_SansSerif";font-style:normal;font-weight:700;src:url(./KaTeX_SansSerif-Bold-D1sUS0GD.woff2) format("woff2"),url(./KaTeX_SansSerif-Bold-DbIhKOiC.woff) format("woff"),url(./KaTeX_SansSerif-Bold-CFMepnvq.ttf) format("truetype")}@font-face{font-display:block;font-family:"KaTeX_SansSerif";font-style:italic;font-weight:400;src:url(./KaTeX_SansSerif-Italic-C3H0VqGB.woff2) format("woff2"),url(./KaTeX_SansSerif-Italic-DN2j7dab.woff) format("woff"),url(./KaTeX_SansSerif-Italic-YYjJ1zSn.ttf) format("truetype")}@font-face{font-display:block;font-family:"KaTeX_SansSerif";font-style:normal;font-weight:400;src:url(./KaTeX_SansSerif-Regular-DDBCnlJ7.woff2) format("woff2"),url(./KaTeX_SansSerif-Regular-CS6fqUqJ.woff) format("woff"),url(./KaTeX_SansSerif-Regular-BNo7hRIc.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Script;font-style:normal;font-weight:400;src:url(./KaTeX_Script-Regular-D3wIWfF6.woff2) format("woff2"),url(./KaTeX_Script-Regular-D5yQViql.woff) format("woff"),url(./KaTeX_Script-Regular-C5JkGWo-.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Size1;font-style:normal;font-weight:400;src:url(./KaTeX_Size1-Regular-mCD8mA8B.woff2) format("woff2"),url(./KaTeX_Size1-Regular-C195tn64.woff) format("woff"),url(./KaTeX_Size1-Regular-Dbsnue_I.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Size2;font-style:normal;font-weight:400;src:url(./KaTeX_Size2-Regular-Dy4dx90m.woff2) format("woff2"),url(./KaTeX_Size2-Regular-oD1tc_U0.woff) format("woff"),url(./KaTeX_Size2-Regular-B7gKUWhC.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Size3;font-style:normal;font-weight:400;src:url(data:font/woff2;base64,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) format("woff2"),url(./KaTeX_Size3-Regular-CTq5MqoE.woff) format("woff"),url(./KaTeX_Size3-Regular-DgpXs0kz.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Size4;font-style:normal;font-weight:400;src:url(./KaTeX_Size4-Regular-Dl5lxZxV.woff2) format("woff2"),url(./KaTeX_Size4-Regular-BF-4gkZK.woff) format("woff"),url(./KaTeX_Size4-Regular-DWFBv043.ttf) format("truetype")}@font-face{font-display:block;font-family:KaTeX_Typewriter;font-style:normal;font-weight:400;src:url(./KaTeX_Typewriter-Regular-CO6r4hn1.woff2) format("woff2"),url(./KaTeX_Typewriter-Regular-C0xS9mPB.woff) format("woff"),url(./KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf) format("truetype")}.katex{font:normal 1.21em KaTeX_Main,Times New Roman,serif;line-height:1.2;position:relative;text-indent:0;text-rendering:auto}.katex *{-ms-high-contrast-adjust:none!important;border-color:currentColor}.katex .katex-version:after{content:"0.16.47"}.katex .katex-mathml{border:0;-webkit-clip-path:inset(50%);clip-path:inset(50%);height:1px;overflow:hidden;padding:0;position:absolute;width:1px}.katex .katex-html>.newline{display:block}.katex .base{position:relative;white-space:nowrap;width:-webkit-min-content;width:-moz-min-content;width:min-content}.katex .base,.katex .strut{display:inline-block}.katex .textbf{font-weight:700}.katex .textit{font-style:italic}.katex .textrm{font-family:KaTeX_Main}.katex .textsf{font-family:KaTeX_SansSerif}.katex .texttt{font-family:KaTeX_Typewriter}.katex .mathnormal{font-family:KaTeX_Math;font-style:italic}.katex .mathit{font-family:KaTeX_Main;font-style:italic}.katex .mathrm{font-style:normal}.katex .mathbf{font-family:KaTeX_Main;font-weight:700}.katex .boldsymbol{font-family:KaTeX_Math;font-style:italic;font-weight:700}.katex .amsrm,.katex .mathbb,.katex .textbb{font-family:KaTeX_AMS}.katex .mathcal{font-family:KaTeX_Caligraphic}.katex .mathfrak,.katex .textfrak{font-family:KaTeX_Fraktur}.katex .mathboldfrak,.katex .textboldfrak{font-family:KaTeX_Fraktur;font-weight:700}.katex .mathtt{font-family:KaTeX_Typewriter}.katex .mathscr,.katex .textscr{font-family:KaTeX_Script}.katex .mathsf,.katex .textsf{font-family:KaTeX_SansSerif}.katex .mathboldsf,.katex .textboldsf{font-family:KaTeX_SansSerif;font-weight:700}.katex .mathitsf,.katex .mathsfit,.katex .textitsf{font-family:KaTeX_SansSerif;font-style:italic}.katex .mainrm{font-family:KaTeX_Main;font-style:normal}.katex .vlist-t{border-collapse:collapse;display:inline-table;table-layout:fixed}.katex .vlist-r{display:table-row}.katex .vlist{display:table-cell;position:relative;vertical-align:bottom}.katex .vlist>span{display:block;height:0;position:relative}.katex .vlist>span>span{display:inline-block}.katex .vlist>span>.pstrut{overflow:hidden;width:0}.katex .vlist-t2{margin-right:-2px}.katex .vlist-s{display:table-cell;font-size:1px;min-width:2px;vertical-align:bottom;width:2px}.katex .vbox{align-items:baseline;display:inline-flex;flex-direction:column}.katex .hbox{width:100%}.katex .hbox,.katex .thinbox{display:inline-flex;flex-direction:row}.katex .thinbox{max-width:0;width:0}.katex .msupsub{text-align:left}.katex .mfrac>span>span{text-align:center}.katex .mfrac .frac-line{border-bottom-style:solid;display:inline-block;width:100%}.katex .hdashline,.katex .hline,.katex .mfrac .frac-line,.katex .overline .overline-line,.katex .rule,.katex .underline .underline-line{min-height:1px}.katex .mspace{display:inline-block}.katex .smash{display:inline;line-height:0}.katex .clap,.katex .llap,.katex .rlap{position:relative;width:0}.katex .clap>.inner,.katex .llap>.inner,.katex .rlap>.inner{position:absolute}.katex .clap>.fix,.katex .llap>.fix,.katex .rlap>.fix{display:inline-block}.katex .llap>.inner{right:0}.katex .clap>.inner,.katex .rlap>.inner{left:0}.katex .clap>.inner>span{margin-left:-50%;margin-right:50%}.katex .rule{border:0 solid;display:inline-block;position:relative}.katex .hline,.katex .overline .overline-line,.katex .underline .underline-line{border-bottom-style:solid;display:inline-block;width:100%}.katex .hdashline{border-bottom-style:dashed;display:inline-block;width:100%}.katex .sqrt>.root{margin-left:.2777777778em;margin-right:-.5555555556em}.katex .fontsize-ensurer.reset-size1.size1,.katex .sizing.reset-size1.size1{font-size:1em}.katex .fontsize-ensurer.reset-size1.size2,.katex .sizing.reset-size1.size2{font-size:1.2em}.katex .fontsize-ensurer.reset-size1.size3,.katex .sizing.reset-size1.size3{font-size:1.4em}.katex .fontsize-ensurer.reset-size1.size4,.katex .sizing.reset-size1.size4{font-size:1.6em}.katex .fontsize-ensurer.reset-size1.size5,.katex .sizing.reset-size1.size5{font-size:1.8em}.katex .fontsize-ensurer.reset-size1.size6,.katex .sizing.reset-size1.size6{font-size:2em}.katex .fontsize-ensurer.reset-size1.size7,.katex .sizing.reset-size1.size7{font-size:2.4em}.katex .fontsize-ensurer.reset-size1.size8,.katex .sizing.reset-size1.size8{font-size:2.88em}.katex .fontsize-ensurer.reset-size1.size9,.katex .sizing.reset-size1.size9{font-size:3.456em}.katex .fontsize-ensurer.reset-size1.size10,.katex .sizing.reset-size1.size10{font-size:4.148em}.katex .fontsize-ensurer.reset-size1.size11,.katex .sizing.reset-size1.size11{font-size:4.976em}.katex .fontsize-ensurer.reset-size2.size1,.katex .sizing.reset-size2.size1{font-size:.8333333333em}.katex .fontsize-ensurer.reset-size2.size2,.katex .sizing.reset-size2.size2{font-size:1em}.katex .fontsize-ensurer.reset-size2.size3,.katex .sizing.reset-size2.size3{font-size:1.1666666667em}.katex .fontsize-ensurer.reset-size2.size4,.katex .sizing.reset-size2.size4{font-size:1.3333333333em}.katex .fontsize-ensurer.reset-size2.size5,.katex .sizing.reset-size2.size5{font-size:1.5em}.katex .fontsize-ensurer.reset-size2.size6,.katex .sizing.reset-size2.size6{font-size:1.6666666667em}.katex .fontsize-ensurer.reset-size2.size7,.katex .sizing.reset-size2.size7{font-size:2em}.katex .fontsize-ensurer.reset-size2.size8,.katex .sizing.reset-size2.size8{font-size:2.4em}.katex .fontsize-ensurer.reset-size2.size9,.katex .sizing.reset-size2.size9{font-size:2.88em}.katex .fontsize-ensurer.reset-size2.size10,.katex .sizing.reset-size2.size10{font-size:3.4566666667em}.katex .fontsize-ensurer.reset-size2.size11,.katex .sizing.reset-size2.size11{font-size:4.1466666667em}.katex .fontsize-ensurer.reset-size3.size1,.katex .sizing.reset-size3.size1{font-size:.7142857143em}.katex .fontsize-ensurer.reset-size3.size2,.katex .sizing.reset-size3.size2{font-size:.8571428571em}.katex .fontsize-ensurer.reset-size3.size3,.katex .sizing.reset-size3.size3{font-size:1em}.katex .fontsize-ensurer.reset-size3.size4,.katex .sizing.reset-size3.size4{font-size:1.1428571429em}.katex .fontsize-ensurer.reset-size3.size5,.katex .sizing.reset-size3.size5{font-size:1.2857142857em}.katex .fontsize-ensurer.reset-size3.size6,.katex .sizing.reset-size3.size6{font-size:1.4285714286em}.katex .fontsize-ensurer.reset-size3.size7,.katex .sizing.reset-size3.size7{font-size:1.7142857143em}.katex .fontsize-ensurer.reset-size3.size8,.katex .sizing.reset-size3.size8{font-size:2.0571428571em}.katex .fontsize-ensurer.reset-size3.size9,.katex .sizing.reset-size3.size9{font-size:2.4685714286em}.katex .fontsize-ensurer.reset-size3.size10,.katex .sizing.reset-size3.size10{font-size:2.9628571429em}.katex .fontsize-ensurer.reset-size3.size11,.katex .sizing.reset-size3.size11{font-size:3.5542857143em}.katex .fontsize-ensurer.reset-size4.size1,.katex .sizing.reset-size4.size1{font-size:.625em}.katex .fontsize-ensurer.reset-size4.size2,.katex .sizing.reset-size4.size2{font-size:.75em}.katex .fontsize-ensurer.reset-size4.size3,.katex .sizing.reset-size4.size3{font-size:.875em}.katex .fontsize-ensurer.reset-size4.size4,.katex .sizing.reset-size4.size4{font-size:1em}.katex .fontsize-ensurer.reset-size4.size5,.katex .sizing.reset-size4.size5{font-size:1.125em}.katex .fontsize-ensurer.reset-size4.size6,.katex .sizing.reset-size4.size6{font-size:1.25em}.katex .fontsize-ensurer.reset-size4.size7,.katex .sizing.reset-size4.size7{font-size:1.5em}.katex .fontsize-ensurer.reset-size4.size8,.katex .sizing.reset-size4.size8{font-size:1.8em}.katex .fontsize-ensurer.reset-size4.size9,.katex .sizing.reset-size4.size9{font-size:2.16em}.katex .fontsize-ensurer.reset-size4.size10,.katex .sizing.reset-size4.size10{font-size:2.5925em}.katex .fontsize-ensurer.reset-size4.size11,.katex .sizing.reset-size4.size11{font-size:3.11em}.katex .fontsize-ensurer.reset-size5.size1,.katex .sizing.reset-size5.size1{font-size:.5555555556em}.katex .fontsize-ensurer.reset-size5.size2,.katex .sizing.reset-size5.size2{font-size:.6666666667em}.katex .fontsize-ensurer.reset-size5.size3,.katex .sizing.reset-size5.size3{font-size:.7777777778em}.katex .fontsize-ensurer.reset-size5.size4,.katex .sizing.reset-size5.size4{font-size:.8888888889em}.katex .fontsize-ensurer.reset-size5.size5,.katex .sizing.reset-size5.size5{font-size:1em}.katex .fontsize-ensurer.reset-size5.size6,.katex .sizing.reset-size5.size6{font-size:1.1111111111em}.katex .fontsize-ensurer.reset-size5.size7,.katex .sizing.reset-size5.size7{font-size:1.3333333333em}.katex .fontsize-ensurer.reset-size5.size8,.katex .sizing.reset-size5.size8{font-size:1.6em}.katex .fontsize-ensurer.reset-size5.size9,.katex .sizing.reset-size5.size9{font-size:1.92em}.katex .fontsize-ensurer.reset-size5.size10,.katex .sizing.reset-size5.size10{font-size:2.3044444444em}.katex .fontsize-ensurer.reset-size5.size11,.katex .sizing.reset-size5.size11{font-size:2.7644444444em}.katex .fontsize-ensurer.reset-size6.size1,.katex .sizing.reset-size6.size1{font-size:.5em}.katex .fontsize-ensurer.reset-size6.size2,.katex .sizing.reset-size6.size2{font-size:.6em}.katex .fontsize-ensurer.reset-size6.size3,.katex .sizing.reset-size6.size3{font-size:.7em}.katex .fontsize-ensurer.reset-size6.size4,.katex .sizing.reset-size6.size4{font-size:.8em}.katex .fontsize-ensurer.reset-size6.size5,.katex .sizing.reset-size6.size5{font-size:.9em}.katex .fontsize-ensurer.reset-size6.size6,.katex .sizing.reset-size6.size6{font-size:1em}.katex .fontsize-ensurer.reset-size6.size7,.katex .sizing.reset-size6.size7{font-size:1.2em}.katex .fontsize-ensurer.reset-size6.size8,.katex .sizing.reset-size6.size8{font-size:1.44em}.katex .fontsize-ensurer.reset-size6.size9,.katex .sizing.reset-size6.size9{font-size:1.728em}.katex .fontsize-ensurer.reset-size6.size10,.katex .sizing.reset-size6.size10{font-size:2.074em}.katex .fontsize-ensurer.reset-size6.size11,.katex .sizing.reset-size6.size11{font-size:2.488em}.katex .fontsize-ensurer.reset-size7.size1,.katex .sizing.reset-size7.size1{font-size:.4166666667em}.katex .fontsize-ensurer.reset-size7.size2,.katex .sizing.reset-size7.size2{font-size:.5em}.katex .fontsize-ensurer.reset-size7.size3,.katex .sizing.reset-size7.size3{font-size:.5833333333em}.katex .fontsize-ensurer.reset-size7.size4,.katex .sizing.reset-size7.size4{font-size:.6666666667em}.katex .fontsize-ensurer.reset-size7.size5,.katex .sizing.reset-size7.size5{font-size:.75em}.katex .fontsize-ensurer.reset-size7.size6,.katex .sizing.reset-size7.size6{font-size:.8333333333em}.katex .fontsize-ensurer.reset-size7.size7,.katex .sizing.reset-size7.size7{font-size:1em}.katex .fontsize-ensurer.reset-size7.size8,.katex .sizing.reset-size7.size8{font-size:1.2em}.katex .fontsize-ensurer.reset-size7.size9,.katex .sizing.reset-size7.size9{font-size:1.44em}.katex .fontsize-ensurer.reset-size7.size10,.katex .sizing.reset-size7.size10{font-size:1.7283333333em}.katex .fontsize-ensurer.reset-size7.size11,.katex .sizing.reset-size7.size11{font-size:2.0733333333em}.katex .fontsize-ensurer.reset-size8.size1,.katex .sizing.reset-size8.size1{font-size:.3472222222em}.katex .fontsize-ensurer.reset-size8.size2,.katex .sizing.reset-size8.size2{font-size:.4166666667em}.katex .fontsize-ensurer.reset-size8.size3,.katex .sizing.reset-size8.size3{font-size:.4861111111em}.katex .fontsize-ensurer.reset-size8.size4,.katex .sizing.reset-size8.size4{font-size:.5555555556em}.katex .fontsize-ensurer.reset-size8.size5,.katex .sizing.reset-size8.size5{font-size:.625em}.katex .fontsize-ensurer.reset-size8.size6,.katex .sizing.reset-size8.size6{font-size:.6944444444em}.katex .fontsize-ensurer.reset-size8.size7,.katex .sizing.reset-size8.size7{font-size:.8333333333em}.katex .fontsize-ensurer.reset-size8.size8,.katex .sizing.reset-size8.size8{font-size:1em}.katex .fontsize-ensurer.reset-size8.size9,.katex .sizing.reset-size8.size9{font-size:1.2em}.katex .fontsize-ensurer.reset-size8.size10,.katex .sizing.reset-size8.size10{font-size:1.4402777778em}.katex .fontsize-ensurer.reset-size8.size11,.katex .sizing.reset-size8.size11{font-size:1.7277777778em}.katex .fontsize-ensurer.reset-size9.size1,.katex .sizing.reset-size9.size1{font-size:.2893518519em}.katex .fontsize-ensurer.reset-size9.size2,.katex .sizing.reset-size9.size2{font-size:.3472222222em}.katex .fontsize-ensurer.reset-size9.size3,.katex .sizing.reset-size9.size3{font-size:.4050925926em}.katex .fontsize-ensurer.reset-size9.size4,.katex .sizing.reset-size9.size4{font-size:.462962963em}.katex .fontsize-ensurer.reset-size9.size5,.katex .sizing.reset-size9.size5{font-size:.5208333333em}.katex .fontsize-ensurer.reset-size9.size6,.katex .sizing.reset-size9.size6{font-size:.5787037037em}.katex .fontsize-ensurer.reset-size9.size7,.katex .sizing.reset-size9.size7{font-size:.6944444444em}.katex .fontsize-ensurer.reset-size9.size8,.katex .sizing.reset-size9.size8{font-size:.8333333333em}.katex .fontsize-ensurer.reset-size9.size9,.katex .sizing.reset-size9.size9{font-size:1em}.katex .fontsize-ensurer.reset-size9.size10,.katex .sizing.reset-size9.size10{font-size:1.2002314815em}.katex .fontsize-ensurer.reset-size9.size11,.katex .sizing.reset-size9.size11{font-size:1.4398148148em}.katex .fontsize-ensurer.reset-size10.size1,.katex .sizing.reset-size10.size1{font-size:.2410800386em}.katex .fontsize-ensurer.reset-size10.size2,.katex .sizing.reset-size10.size2{font-size:.2892960463em}.katex .fontsize-ensurer.reset-size10.size3,.katex .sizing.reset-size10.size3{font-size:.337512054em}.katex .fontsize-ensurer.reset-size10.size4,.katex .sizing.reset-size10.size4{font-size:.3857280617em}.katex .fontsize-ensurer.reset-size10.size5,.katex .sizing.reset-size10.size5{font-size:.4339440694em}.katex .fontsize-ensurer.reset-size10.size6,.katex .sizing.reset-size10.size6{font-size:.4821600771em}.katex .fontsize-ensurer.reset-size10.size7,.katex .sizing.reset-size10.size7{font-size:.5785920926em}.katex .fontsize-ensurer.reset-size10.size8,.katex .sizing.reset-size10.size8{font-size:.6943105111em}.katex .fontsize-ensurer.reset-size10.size9,.katex .sizing.reset-size10.size9{font-size:.8331726133em}.katex .fontsize-ensurer.reset-size10.size10,.katex .sizing.reset-size10.size10{font-size:1em}.katex .fontsize-ensurer.reset-size10.size11,.katex .sizing.reset-size10.size11{font-size:1.1996142719em}.katex .fontsize-ensurer.reset-size11.size1,.katex .sizing.reset-size11.size1{font-size:.2009646302em}.katex .fontsize-ensurer.reset-size11.size2,.katex .sizing.reset-size11.size2{font-size:.2411575563em}.katex .fontsize-ensurer.reset-size11.size3,.katex .sizing.reset-size11.size3{font-size:.2813504823em}.katex .fontsize-ensurer.reset-size11.size4,.katex .sizing.reset-size11.size4{font-size:.3215434084em}.katex .fontsize-ensurer.reset-size11.size5,.katex .sizing.reset-size11.size5{font-size:.3617363344em}.katex .fontsize-ensurer.reset-size11.size6,.katex .sizing.reset-size11.size6{font-size:.4019292605em}.katex .fontsize-ensurer.reset-size11.size7,.katex .sizing.reset-size11.size7{font-size:.4823151125em}.katex .fontsize-ensurer.reset-size11.size8,.katex .sizing.reset-size11.size8{font-size:.578778135em}.katex .fontsize-ensurer.reset-size11.size9,.katex .sizing.reset-size11.size9{font-size:.6945337621em}.katex .fontsize-ensurer.reset-size11.size10,.katex .sizing.reset-size11.size10{font-size:.8336012862em}.katex .fontsize-ensurer.reset-size11.size11,.katex .sizing.reset-size11.size11{font-size:1em}.katex .delimsizing.size1{font-family:KaTeX_Size1}.katex .delimsizing.size2{font-family:KaTeX_Size2}.katex .delimsizing.size3{font-family:KaTeX_Size3}.katex .delimsizing.size4{font-family:KaTeX_Size4}.katex .delimsizing.mult .delim-size1>span{font-family:KaTeX_Size1}.katex .delimsizing.mult .delim-size4>span{font-family:KaTeX_Size4}.katex .nulldelimiter{display:inline-block;width:.12em}.katex .delimcenter,.katex .op-symbol{position:relative}.katex .op-symbol.small-op{font-family:KaTeX_Size1}.katex .op-symbol.large-op{font-family:KaTeX_Size2}.katex .accent>.vlist-t,.katex .op-limits>.vlist-t{text-align:center}.katex .accent .accent-body{position:relative}.katex .accent .accent-body:not(.accent-full){width:0}.katex .overlay{display:block}.katex .mtable .vertical-separator{display:inline-block;min-width:1px}.katex .mtable .arraycolsep{display:inline-block}.katex .mtable .col-align-c>.vlist-t{text-align:center}.katex .mtable .col-align-l>.vlist-t{text-align:left}.katex .mtable .col-align-r>.vlist-t{text-align:right}.katex .svg-align{text-align:left}.katex svg{fill:currentColor;stroke:currentColor;display:block;height:inherit;position:absolute;width:100%}.katex svg path{stroke:none}.katex svg{fill-rule:nonzero;fill-opacity:1;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1}.katex img{border-style:none;max-height:none;max-width:none;min-height:0;min-width:0}.katex .stretchy{display:block;overflow:hidden;position:relative;width:100%}.katex .stretchy:after,.katex .stretchy:before{content:""}.katex .hide-tail{overflow:hidden;position:relative;width:100%}.katex .halfarrow-left{left:0;overflow:hidden;position:absolute;width:50.2%}.katex .halfarrow-right{overflow:hidden;position:absolute;right:0;width:50.2%}.katex .brace-left{left:0;overflow:hidden;position:absolute;width:25.1%}.katex .brace-center{left:25%;overflow:hidden;position:absolute;width:50%}.katex .brace-right{overflow:hidden;position:absolute;right:0;width:25.1%}.katex .x-arrow-pad{padding:0 .5em}.katex .cd-arrow-pad{padding:0 .55556em 0 .27778em}.katex .mover,.katex .munder,.katex .x-arrow{text-align:center}.katex .boxpad{padding:0 .3em}.katex .fbox,.katex .fcolorbox{border:.04em solid;box-sizing:border-box}.katex .cancel-pad{padding:0 .2em}.katex .cancel-lap{margin-left:-.2em;margin-right:-.2em}.katex .sout{border-bottom-style:solid;border-bottom-width:.08em}.katex .angl{border-right:.049em solid;border-top:.049em solid;box-sizing:border-box;margin-right:.03889em}.katex .anglpad{padding:0 .03889em}.katex .eqn-num:before{content:"(" counter(katexEqnNo) ")";counter-increment:katexEqnNo}.katex .mml-eqn-num:before{content:"(" counter(mmlEqnNo) ")";counter-increment:mmlEqnNo}.katex .mtr-glue{width:50%}.katex .cd-vert-arrow{display:inline-block;position:relative}.katex .cd-label-left{display:inline-block;position:absolute;right:calc(50% + .3em);text-align:left}.katex .cd-label-right{display:inline-block;left:calc(50% + .3em);position:absolute;text-align:right}.katex-display{display:block;margin:1em 0;text-align:center}.katex-display>.katex{display:block;text-align:center;white-space:nowrap}.katex-display>.katex>.katex-html{display:block;position:relative}.katex-display>.katex>.katex-html>.tag{position:absolute;right:0}.katex-display.leqno>.katex>.katex-html>.tag{left:0;right:auto}.katex-display.fleqn>.katex{padding-left:2em;text-align:left}body{counter-reset:katexEqnNo mmlEqnNo}
+/* Markdown editor styles. Theme via [data-theme="light|dark"] on .mdx-root (or any ancestor). */
+.mdx-root {
+  --mdx-bg: #ffffff;
+  --mdx-fg: #1f2328;
+  --mdx-muted: #656d76;
+  --mdx-border: #d0d7de;
+  --mdx-toolbar-bg: #f6f8fa;
+  --mdx-btn-hover: #e6eaef;
+  --mdx-btn-active: #d0e2ff;
+  --mdx-accent: #0969da;
+  --mdx-code-bg: #f3f4f6;
+  --mdx-code-fg: #1f2328;
+  --mdx-quote: #57606a;
+  --mdx-th-bg: #f6f8fa;
+  --mdx-sel: #b6d7ff;
+  --mdx-hl-keyword: #cf222e; --mdx-hl-string: #0a3069; --mdx-hl-comment: #6e7781;
+  --mdx-hl-number: #0550ae; --mdx-hl-title: #8250df; --mdx-hl-attr: #116329;
+  display: flex; flex-direction: column; height: 100%; min-height: 0;
+  background: var(--mdx-bg); color: var(--mdx-fg);
+  font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color-scheme: light;
+}
+.mdx-root[data-theme="dark"] {
+  --mdx-bg: #0d1117;
+  --mdx-fg: #e6edf3;
+  --mdx-muted: #8b949e;
+  --mdx-border: #30363d;
+  --mdx-toolbar-bg: #161b22;
+  --mdx-btn-hover: #262c36;
+  --mdx-btn-active: #1f3a5f;
+  --mdx-accent: #58a6ff;
+  --mdx-code-bg: #161b22;
+  --mdx-code-fg: #e6edf3;
+  --mdx-quote: #9198a1;
+  --mdx-th-bg: #161b22;
+  --mdx-sel: #264f78;
+  --mdx-hl-keyword: #ff7b72; --mdx-hl-string: #a5d6ff; --mdx-hl-comment: #8b949e;
+  --mdx-hl-number: #79c0ff; --mdx-hl-title: #d2a8ff; --mdx-hl-attr: #7ee787;
+  color-scheme: dark;
+}
+
+/* ---------- toolbar ---------- */
+.mdx-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+  padding: 6px 8px; background: var(--mdx-toolbar-bg);
+  border-bottom: 1px solid var(--mdx-border); flex: 0 0 auto; position: relative;
+}
+.mdx-sep { width: 1px; align-self: stretch; margin: 2px 6px; background: var(--mdx-border); }
+.mdx-btn {
+  appearance: none; border: 1px solid transparent; background: transparent; color: var(--mdx-fg);
+  min-width: 30px; height: 30px; padding: 0 7px; border-radius: 6px; cursor: pointer;
+  font: 600 13px/1 inherit; font-family: inherit; display: inline-flex; align-items: center; justify-content: center;
+}
+.mdx-btn:hover:not(:disabled) { background: var(--mdx-btn-hover); }
+.mdx-btn:focus-visible { outline: 2px solid var(--mdx-accent); outline-offset: 1px; }
+.mdx-btn.is-active { background: var(--mdx-btn-active); border-color: var(--mdx-accent); }
+.mdx-btn:disabled { opacity: .4; cursor: default; }
+.mdx-btn.mdx-i { font-style: italic; font-family: Georgia, serif; }
+.mdx-btn.mdx-s { text-decoration: line-through; }
+.mdx-btn.mdx-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.mdx-spacer { flex: 1 1 auto; }
+
+/* in-page input popover (link / image URL) */
+.mdx-popover {
+  position: absolute; z-index: 20; left: 8px; top: calc(100% + 4px);
+  display: flex; gap: 6px; align-items: center; padding: 8px;
+  background: var(--mdx-bg); border: 1px solid var(--mdx-border); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+.mdx-popover[hidden] { display: none; }
+.mdx-popover label { font-size: 12px; color: var(--mdx-muted); }
+.mdx-popover input {
+  width: 300px; max-width: 60vw; padding: 5px 8px; border: 1px solid var(--mdx-border); border-radius: 6px;
+  background: var(--mdx-bg); color: var(--mdx-fg); font: 14px inherit; font-family: inherit;
+}
+.mdx-popover input:focus { outline: 2px solid var(--mdx-accent); border-color: transparent; }
+.mdx-popover button {
+  padding: 5px 10px; border-radius: 6px; border: 1px solid var(--mdx-border); background: var(--mdx-toolbar-bg);
+  color: var(--mdx-fg); cursor: pointer; font: 13px inherit; font-family: inherit;
+}
+.mdx-popover button.mdx-primary { background: var(--mdx-accent); border-color: var(--mdx-accent); color: #fff; }
+
+/* ---------- panes ---------- */
+.mdx-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.mdx-wysiwyg { max-width: 860px; margin: 0 auto; padding: 24px 32px 96px; }
+.mdx-source {
+  display: block; box-sizing: border-box; width: 100%; height: 100%; min-height: 300px; resize: none;
+  border: 0; outline: 0; padding: 24px 32px; background: var(--mdx-bg); color: var(--mdx-fg);
+  font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2;
+}
+.mdx-source[hidden], .mdx-wysiwyg[hidden] { display: none; }
+.mdx-root.mdx-source-mode .mdx-body { overflow: hidden; }
+.mdx-root.mdx-source-mode .mdx-btn[data-cmd]:not([data-keep]) { opacity: .35; pointer-events: none; }
+
+/* ---------- ProseMirror content ---------- */
+.mdx-root .ProseMirror { outline: none; min-height: 60vh; word-wrap: break-word; white-space: pre-wrap; }
+.ProseMirror > *:first-child { margin-top: 0; }
+.ProseMirror p { margin: 0 0 1em; }
+.ProseMirror h1, .ProseMirror h2, .ProseMirror h3, .ProseMirror h4, .ProseMirror h5, .ProseMirror h6 {
+  margin: 1.4em 0 .6em; line-height: 1.25; font-weight: 600;
+}
+.ProseMirror h1 { font-size: 2em; padding-bottom: .3em; border-bottom: 1px solid var(--mdx-border); }
+.ProseMirror h2 { font-size: 1.5em; padding-bottom: .3em; border-bottom: 1px solid var(--mdx-border); }
+.ProseMirror h3 { font-size: 1.25em; }
+.ProseMirror h4 { font-size: 1em; }
+.ProseMirror h5 { font-size: .875em; }
+.ProseMirror h6 { font-size: .85em; color: var(--mdx-muted); }
+.ProseMirror a { color: var(--mdx-accent); text-decoration: underline; cursor: pointer; }
+.ProseMirror ul, .ProseMirror ol { padding-left: 2em; margin: 0 0 1em; }
+.ProseMirror li > p { margin: 0 0 .25em; }
+.ProseMirror li > ul, .ProseMirror li > ol { margin: .25em 0 0; }
+.ProseMirror blockquote {
+  margin: 0 0 1em; padding: 0 1em; color: var(--mdx-quote); border-left: .25em solid var(--mdx-border);
+}
+.ProseMirror hr { border: 0; border-top: 2px solid var(--mdx-border); margin: 1.5em 0; }
+.ProseMirror hr.ProseMirror-selectednode { border-top-color: var(--mdx-accent); }
+.ProseMirror code {
+  background: var(--mdx-code-bg); padding: .15em .35em; border-radius: 4px;
+  font: .88em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.ProseMirror pre {
+  background: var(--mdx-code-bg); color: var(--mdx-code-fg); padding: 12px 16px; border-radius: 6px;
+  overflow: auto; margin: 0 0 1em; line-height: 1.45;
+}
+.ProseMirror pre code { background: none; padding: 0; font-size: .875em; white-space: pre; }
+.ProseMirror img { max-width: 100%; height: auto; }
+.ProseMirror img.ProseMirror-selectednode { outline: 2px solid var(--mdx-accent); }
+
+/* task list (@tiptap/extension-list v3: <ul data-type="taskList"><li data-checked=..><label><input><span></span></label><div>..</div></li>; the li has NO data-type) */
+.ProseMirror ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+.ProseMirror ul[data-type="taskList"] ul[data-type="taskList"] { padding-left: 1.5em; margin-top: .25em; }
+.ProseMirror ul[data-type="taskList"] > li { display: flex; gap: .5em; align-items: flex-start; }
+.ProseMirror ul[data-type="taskList"] > li > label { flex: 0 0 auto; display: inline-flex; margin-top: .3em; user-select: none; }
+.ProseMirror ul[data-type="taskList"] > li > div { flex: 1 1 auto; min-width: 0; }
+.ProseMirror ul[data-type="taskList"] > li > div > p { margin: 0 0 .25em; }
+.ProseMirror ul[data-type="taskList"] > li[data-checked="true"] > div { color: var(--mdx-muted); text-decoration: line-through; }
+.ProseMirror ul[data-type="taskList"] > li input[type="checkbox"] { cursor: pointer; margin: 0; accent-color: var(--mdx-accent); }
+
+/* raw HTML / footnote / front-matter chips (read-only; content is shown as escaped text, never rendered) */
+.ProseMirror .mdx-raw { cursor: default; }
+.ProseMirror .mdx-raw-block {
+  position: relative; margin: 0 0 1em; padding: 6px 12px 8px; border: 1px dashed var(--mdx-border); border-radius: 6px;
+  background: var(--mdx-code-bg); color: var(--mdx-muted);
+}
+.ProseMirror .mdx-raw-label {
+  display: block; font: 600 11px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--mdx-muted); user-select: none;
+}
+.ProseMirror .mdx-raw-text {
+  margin: 0; padding: 0; background: none; color: var(--mdx-code-fg); overflow: auto; white-space: pre-wrap; word-break: break-word;
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.ProseMirror .mdx-raw-inline {
+  display: inline; padding: .05em .35em; border: 1px dashed var(--mdx-border); border-radius: 4px; background: var(--mdx-code-bg);
+  color: var(--mdx-muted); white-space: pre-wrap; word-break: break-word;
+  font: .82em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.ProseMirror .mdx-raw-inline.mdx-raw-footnote { color: var(--mdx-accent); border-style: solid; }
+.ProseMirror .mdx-raw-block.mdx-raw-footnote .mdx-raw-text { color: var(--mdx-fg); }
+.ProseMirror .mdx-raw.ProseMirror-selectednode { outline: 2px solid var(--mdx-accent); outline-offset: 1px; }
+
+/* tables */
+.ProseMirror table { border-collapse: collapse; margin: 0 0 1em; width: max-content; max-width: 100%; table-layout: fixed; overflow: hidden; }
+.ProseMirror th, .ProseMirror td {
+  border: 1px solid var(--mdx-border); padding: 6px 12px; min-width: 80px; vertical-align: top; position: relative;
+}
+.ProseMirror th { background: var(--mdx-th-bg); font-weight: 600; text-align: left; }
+.ProseMirror td > p, .ProseMirror th > p { margin: 0; }
+.ProseMirror .selectedCell::after { content: ""; position: absolute; inset: 0; background: var(--mdx-sel); opacity: .45; pointer-events: none; }
+.ProseMirror .tableWrapper { overflow-x: auto; }
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder); color: var(--mdx-muted); float: left; height: 0; pointer-events: none;
+}
+.ProseMirror ::selection { background: var(--mdx-sel); }
+.ProseMirror-gapcursor:after { border-top: 1px solid var(--mdx-fg); }
+
+/* syntax highlighting (lowlight / hljs classes) */
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-built_in, .hljs-type { color: var(--mdx-hl-keyword); }
+.hljs-string, .hljs-regexp, .hljs-addition { color: var(--mdx-hl-string); }
+.hljs-comment, .hljs-quote, .hljs-meta { color: var(--mdx-hl-comment); font-style: italic; }
+.hljs-number, .hljs-symbol, .hljs-bullet { color: var(--mdx-hl-number); }
+.hljs-title, .hljs-section, .hljs-name, .hljs-function { color: var(--mdx-hl-title); }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-property { color: var(--mdx-hl-attr); }
+.hljs-deletion { color: var(--mdx-hl-keyword); }
+.hljs-emphasis { font-style: italic; } .hljs-strong { font-weight: 700; }
+
+/* ---------- Mermaid diagrams + KaTeX math nodes ---------- */
+.ProseMirror .mdx-node { --mdx-err: #cf222e; }
+.mdx-root[data-theme="dark"] .ProseMirror .mdx-node { --mdx-err: #ff7b72; }
+.ProseMirror .mdx-node.ProseMirror-selectednode { outline: 2px solid var(--mdx-accent); outline-offset: 2px; }
+.ProseMirror .mdx-node-toggle {
+  appearance: none; border: 1px solid var(--mdx-border); background: var(--mdx-toolbar-bg); color: var(--mdx-fg);
+  font: 600 12px/1 inherit; font-family: inherit; padding: 4px 8px; border-radius: 6px; cursor: pointer; white-space: normal;
+}
+.ProseMirror .mdx-node-toggle:hover { background: var(--mdx-btn-hover); }
+.ProseMirror .mdx-node-toggle:focus-visible { outline: 2px solid var(--mdx-accent); outline-offset: 1px; }
+.ProseMirror .mdx-node.mdx-editing > .mdx-node-head .mdx-node-toggle, .ProseMirror .mdx-node-toggle[aria-expanded="true"] { background: var(--mdx-btn-active); border-color: var(--mdx-accent); }
+
+/* block nodes */
+.ProseMirror div.mdx-node { margin: 0 0 1em; border: 1px solid var(--mdx-border); border-radius: 6px; background: var(--mdx-bg); white-space: normal; }
+.ProseMirror .mdx-node-head { display: flex; align-items: center; justify-content: space-between; padding: 3px 8px; border-bottom: 1px solid var(--mdx-border); background: var(--mdx-toolbar-bg); border-radius: 6px 6px 0 0; }
+.ProseMirror .mdx-node-label { font: 600 11px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-transform: uppercase; letter-spacing: .04em; color: var(--mdx-muted); user-select: none; }
+.ProseMirror .mdx-node-head .mdx-node-toggle { padding: 2px 8px; }
+.ProseMirror .mdx-mermaid-render { padding: 12px; overflow: auto; text-align: center; min-height: 24px; cursor: default; }
+.ProseMirror .mdx-mermaid-render > svg { max-width: 100%; height: auto; display: inline-block; }
+.ProseMirror .mdx-math-block .mdx-math-render { padding: 6px 12px; overflow-x: auto; overflow-y: hidden; text-align: center; cursor: text; min-height: 24px; }
+.ProseMirror .mdx-math-block .mdx-math-render .katex-display { margin: .4em 0; }
+.ProseMirror textarea.mdx-mermaid-source, .ProseMirror textarea.mdx-math-source {
+  display: block; box-sizing: border-box; width: 100%; margin: 0; padding: 10px 12px; border: 0; border-top: 1px solid var(--mdx-border); border-radius: 0 0 6px 6px; outline: none; resize: vertical;
+  background: var(--mdx-code-bg); color: var(--mdx-code-fg); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; white-space: pre;
+}
+.ProseMirror textarea.mdx-mermaid-source:focus, .ProseMirror textarea.mdx-math-source:focus { box-shadow: inset 0 0 0 2px var(--mdx-accent); }
+.ProseMirror .mdx-node [hidden] { display: none !important; }
+.ProseMirror div.mdx-node.mdx-has-error { border-color: var(--mdx-err); }
+
+/* inline math */
+.ProseMirror span.mdx-math-inline { display: inline; position: relative; white-space: nowrap; border-radius: 4px; }
+.ProseMirror span.mdx-math-inline:hover, .ProseMirror span.mdx-math-inline.mdx-editing { background: var(--mdx-code-bg); }
+.ProseMirror .mdx-math-inline .mdx-math-render { cursor: text; }
+.ProseMirror .mdx-math-inline .mdx-node-toggle { display: none; position: absolute; right: -6px; top: -1.3em; z-index: 5; padding: 1px 4px; font-size: 11px; line-height: 1.2; } /* overlay: never shifts the text on hover */
+.ProseMirror .mdx-math-inline:hover .mdx-node-toggle, .ProseMirror .mdx-math-inline.mdx-editing .mdx-node-toggle, .ProseMirror .mdx-math-inline .mdx-node-toggle:focus-visible { display: inline-block; }
+.ProseMirror input.mdx-math-source {
+  box-sizing: content-box; min-width: 8ch; width: 22ch; max-width: 60ch; padding: 1px 6px; border: 1px solid var(--mdx-accent); border-radius: 4px; outline: none;
+  background: var(--mdx-code-bg); color: var(--mdx-code-fg); font: .88em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* errors (mermaid syntax errors are text in a box; bad LaTeX is KaTeX's own span, restyled) */
+.ProseMirror .mdx-error { color: var(--mdx-err); font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; text-align: left; }
+.ProseMirror div.mdx-error { padding: 8px 12px; border-left: 3px solid var(--mdx-err); background: var(--mdx-code-bg); border-radius: 4px; }
+.ProseMirror span.mdx-error { text-decoration: underline wavy var(--mdx-err); text-underline-offset: 2px; }
+.ProseMirror .katex-error.mdx-error { color: var(--mdx-err) !important; }
+
+/* KaTeX inherits the text color in both themes (no color override on .katex) */
+.ProseMirror .katex { color: inherit; font-size: 1.1em; }
+.ProseMirror .katex-display > .katex { white-space: normal; }
+.ProseMirror .mdx-error .mdx-error-src { font: inherit; background: none; padding: 0; text-decoration: none; opacity: .85; }
+.ProseMirror span.mdx-error:has(.mdx-error-src) { text-decoration: none; }
+/* Print / Save-as-PDF stylesheet (Editor Dev). Prints ONLY the rendered document, always in light colors.
+   Loaded after editor.css (import order in index.js). Page-shell chrome is hidden by the generic rule below, so it keeps working
+   even if the shell gains new elements. See EDITOR_NOTES.md "Print". */
+@page { margin: 18mm; }
+
+/* the editor's own print-only helper is invisible on screen */
+.mdx-print-source { display: none; }
+
+@media print {
+  /* ---- 0. page shell: hide everything that is neither an ancestor of the editor nor inside it ---- */
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #000; color-scheme: light !important; }
+  body { display: block !important; }
+  body *:not(:has(.mdx-root)):not(.mdx-root):not(.mdx-root *) { display: none !important; }
+  /* named hooks that exist in src/page + src/drive-ui today (redundant with the rule above, kept as documentation / fallback) */
+  #filebar, #dropzone, #drive-status, #status, #fallback-input, .gdui-overlay, .gdui-dialog, .gdui-status, .gdui-toast, .no-print, [data-no-print] { display: none !important; }
+  body[data-printing] #filebar { display: none !important; }
+
+  /* ---- 1. light palette regardless of data-theme ---- */
+  .mdx-root, .mdx-root[data-theme="dark"], .mdx-root[data-theme="light"] {
+    --mdx-bg: #ffffff; --mdx-fg: #000000; --mdx-muted: #555b63; --mdx-border: #c9ced4;
+    --mdx-toolbar-bg: #f6f8fa; --mdx-btn-hover: #e6eaef; --mdx-btn-active: #d0e2ff; --mdx-accent: #0550ae;
+    --mdx-code-bg: #f3f4f6; --mdx-code-fg: #1f2328; --mdx-quote: #4b535c; --mdx-th-bg: #eceff2; --mdx-sel: transparent;
+    --mdx-hl-keyword: #cf222e; --mdx-hl-string: #0a3069; --mdx-hl-comment: #6e7781;
+    --mdx-hl-number: #0550ae; --mdx-hl-title: #8250df; --mdx-hl-attr: #116329;
+    color-scheme: light;
+  }
+  .mdx-root .ProseMirror .mdx-node, .mdx-root[data-theme="dark"] .ProseMirror .mdx-node { --mdx-err: #cf222e; }
+  .mdx-root, .mdx-root * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* ---- 2. layout: full page box, no editor chrome ---- */
+  .mdx-root { display: block !important; height: auto !important; min-height: 0 !important; overflow: visible !important; background: #fff !important; color: #000 !important; font-size: 11pt; line-height: 1.5; }
+  .mdx-body { overflow: visible !important; height: auto !important; flex: none !important; }
+  .mdx-root.mdx-source-mode .mdx-body { overflow: visible !important; }
+  .mdx-wysiwyg { max-width: none !important; width: auto !important; margin: 0 !important; padding: 0 !important; }
+  .mdx-root .ProseMirror { min-height: 0 !important; outline: none !important; caret-color: transparent; }
+
+  /* ---- 3. hidden UI ---- */
+  .mdx-toolbar, .mdx-popover, .mdx-sep, .mdx-btn, .mdx-node-toggle, .mdx-node-head, .mdx-raw-label,
+  .mdx-root textarea, .mdx-root input[type="text"], .mdx-source,
+  .ProseMirror-gapcursor, .ProseMirror-trailingBreak, img.ProseMirror-separator, .ProseMirror-widget:not(.mdx-keep-print) { display: none !important; }
+  .ProseMirror p.is-editor-empty::before, .ProseMirror p.is-empty::before { content: none !important; display: none !important; }
+  .ProseMirror p:has(> br.ProseMirror-trailingBreak:only-child) { display: none !important; }
+  .ProseMirror .selectedCell::after { display: none !important; }
+  .ProseMirror ::selection, .ProseMirror-hideselection *::selection { background: transparent; }
+  .ProseMirror .ProseMirror-selectednode, .ProseMirror img.ProseMirror-selectednode, .ProseMirror hr.ProseMirror-selectednode,
+  .ProseMirror .mdx-node.ProseMirror-selectednode, .ProseMirror .mdx-raw.ProseMirror-selectednode { outline: none !important; }
+  .mdx-root *:focus, .mdx-root *:focus-visible { outline: none !important; box-shadow: none !important; }
+  .ProseMirror span.mdx-math-inline, .ProseMirror span.mdx-math-inline:hover { background: none !important; }
+
+  /* ---- 4. source mode: the textarea prints as a pre-wrapped text mirror ---- */
+  .mdx-root.mdx-source-mode .mdx-wysiwyg { display: none !important; }
+  .mdx-root.mdx-source-mode .mdx-print-source {
+    display: block !important; margin: 0; padding: 0; background: none; color: #000; border: 0;
+    font: 9.5pt/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; tab-size: 2;
+  }
+
+  /* ---- 5. typography ---- */
+  .ProseMirror p { orphans: 3; widows: 3; }
+  .ProseMirror a { color: #0550ae; text-decoration: underline; }
+  .ProseMirror h1, .ProseMirror h2, .ProseMirror h3, .ProseMirror h4, .ProseMirror h5, .ProseMirror h6 { break-after: avoid; page-break-after: avoid; break-inside: avoid; }
+  .ProseMirror h1 + *, .ProseMirror h2 + *, .ProseMirror h3 + *, .ProseMirror h4 + *, .ProseMirror h5 + *, .ProseMirror h6 + * { break-before: avoid; }
+  .ProseMirror mark { background: #fff3a3; color: #000; }
+  .ProseMirror hr { break-after: avoid; }
+
+  /* ---- 6. code ---- */
+  .ProseMirror pre { break-inside: auto; orphans: 3; widows: 3; overflow: visible !important; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; font-size: 9.5pt; border: 1px solid var(--mdx-border); border-radius: 4px; }
+  .ProseMirror pre code { white-space: pre-wrap !important; word-break: break-word; overflow-wrap: anywhere; font-size: 9.5pt !important; }
+  .ProseMirror code { font-size: .88em; }
+
+  /* ---- 7. tables ---- */
+  /* BUG-32: fixed layout + width 100% => every column is at most 1/n of the printable width and unbreakable tokens (URLs, hashes, ids,
+     inline code) wrap with overflow-wrap:anywhere instead of pushing the table past the page edge (where it was silently clipped).
+     ProseMirror/TipTap set inline widths (table min-width, <col style="min-width">, cell colwidth), hence the !important overrides. */
+  .ProseMirror .tableWrapper, .ProseMirror .tableWrapper > * { overflow: visible !important; max-width: 100% !important; }
+  .ProseMirror .tableWrapper { width: 100% !important; }
+  .ProseMirror table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed !important; overflow: visible !important; }
+  .ProseMirror table colgroup, .ProseMirror table col { width: auto !important; min-width: 0 !important; max-width: none !important; }
+  .ProseMirror th, .ProseMirror td { min-width: 0 !important; max-width: 100% !important; width: auto !important; overflow: visible !important; word-break: break-word; overflow-wrap: anywhere !important; }
+  .ProseMirror th *, .ProseMirror td * { min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
+  .ProseMirror th code, .ProseMirror td code { white-space: pre-wrap; }
+  .ProseMirror thead { display: table-header-group; }
+  .ProseMirror tfoot { display: table-footer-group; }
+  .ProseMirror tr, .ProseMirror th, .ProseMirror td { break-inside: avoid; page-break-inside: avoid; }
+  .ProseMirror tr:has(> th) { break-after: avoid; page-break-after: avoid; } /* TipTap tables have no <thead>: keep the header row with the first body row */
+  .ProseMirror th { background: var(--mdx-th-bg) !important; }
+
+  /* ---- 8. lists / quotes / images / rules ---- */
+  .ProseMirror li, .ProseMirror ul[data-type="taskList"] > li { break-inside: avoid; page-break-inside: avoid; }
+  .ProseMirror blockquote { break-inside: avoid; page-break-inside: avoid; }
+  .ProseMirror img, .ProseMirror figure { max-width: 100% !important; height: auto; break-inside: avoid; page-break-inside: avoid; }
+  .ProseMirror ul[data-type="taskList"] > li > label { pointer-events: none; }
+  .ProseMirror ul[data-type="taskList"] > li input[type="checkbox"] { display: inline-block !important; pointer-events: none; appearance: auto; width: 1em; height: 1em; accent-color: #1f2328; }
+
+  /* ---- 9. raw chips: verbatim text, subtle monospace ---- */
+  .ProseMirror .mdx-raw-block { border: 0 !important; border-left: 2px solid var(--mdx-border) !important; border-radius: 0 !important; padding: 2px 10px !important; background: var(--mdx-code-bg) !important; break-inside: avoid; }
+  .ProseMirror .mdx-raw-block .mdx-raw-text { overflow: visible !important; font-size: 9pt !important; color: var(--mdx-code-fg); }
+  .ProseMirror .mdx-raw-inline { border: 0 !important; background: var(--mdx-code-bg) !important; color: var(--mdx-code-fg) !important; padding: 0 .2em !important; }
+
+  /* ---- 10. mermaid + math ---- */
+  .ProseMirror div.mdx-node { border: 0 !important; border-radius: 0 !important; background: none !important; break-inside: avoid; page-break-inside: avoid; }
+  .ProseMirror div.mdx-node.mdx-has-error { border: 0 !important; }
+  .ProseMirror .mdx-mermaid-render { padding: 0 !important; overflow: visible !important; text-align: center; }
+  .ProseMirror .mdx-mermaid-render > svg { max-width: 100% !important; max-height: 90vh; width: auto; height: auto; }
+  .ProseMirror .mdx-mermaid-render > svg[style*="max-width"] { width: 100%; }
+  .ProseMirror .mdx-math-block .mdx-math-render { padding: 0 !important; overflow: visible !important; break-inside: avoid; }
+  .ProseMirror span.mdx-math-inline { white-space: normal; }
+  .ProseMirror .mdx-math-inline .mdx-math-render { white-space: nowrap; }
+  .ProseMirror .katex { color: #000; }
+  .ProseMirror .katex-display { break-inside: avoid; overflow: visible !important; }
+  /* failed render: error box + source as plain text */
+  .ProseMirror div.mdx-error { break-inside: avoid; color: #cf222e; background: #fff5f5 !important; border-left: 3px solid #cf222e; }
+  /* light SVG not cached yet (plain Ctrl+P without prepareForPrint): invert the dark diagram as a last resort */
+  .ProseMirror .mdx-mermaid-render.mdx-print-fallback { background: #fff; }
+  .ProseMirror .mdx-mermaid-render.mdx-print-fallback > svg { filter: invert(1) hue-rotate(180deg); }
+
+  /* ---- 11. optional link URLs (editor.setPrintLinks(true) -> data-print-links on .mdx-root; or set it on <body>) ---- */
+  [data-print-links] .ProseMirror a[href^="http://"]::after,
+  [data-print-links] .ProseMirror a[href^="https://"]::after,
+  [data-print-links] .ProseMirror a[href^="mailto:"]::after { content: " (" attr(href) ")"; font-size: .85em; color: #555b63; word-break: break-all; }
+}
+/* Drive UI styles. Theme via data-theme="light|dark" on .gdui-overlay / .gdui-status ancestors.
+   Palette matches src/page/page.css (--bar-*, --accent) and the editor's dark look. No remote assets. */
+.gdui {
+  --gd-bg: #ffffff; --gd-fg: #111827; --gd-muted: #5b6472; --gd-border: #d1d5db; --gd-soft: #f3f4f6;
+  --gd-hover: #e5e7eb; --gd-sel: #dbeafe; --gd-accent: #2563eb; --gd-accent-fg: #ffffff;
+  --gd-danger: #b91c1c; --gd-danger-bg: #fef2f2; --gd-warn: #92400e; --gd-warn-bg: #fffbeb; --gd-ok: #15803d;
+  --gd-shadow: 0 16px 48px rgba(0, 0, 0, .28); --gd-backdrop: rgba(17, 24, 39, .45);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--gd-fg); color-scheme: light;
+}
+.gdui[data-theme="dark"] {
+  --gd-bg: #111827; --gd-fg: #f3f4f6; --gd-muted: #9ca3af; --gd-border: #374151; --gd-soft: #1f2937;
+  --gd-hover: #2b3648; --gd-sel: #1e3a5f; --gd-accent: #60a5fa; --gd-accent-fg: #0b1220;
+  --gd-danger: #f87171; --gd-danger-bg: #3b1616; --gd-warn: #fbbf24; --gd-warn-bg: #33270d; --gd-ok: #4ade80;
+  --gd-shadow: 0 16px 48px rgba(0, 0, 0, .6); --gd-backdrop: rgba(0, 0, 0, .6); color-scheme: dark;
+}
+.gdui, .gdui * { box-sizing: border-box; }
+.gdui [hidden] { display: none !important; }
+
+.gdui-overlay {
+  position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
+  background: var(--gd-backdrop); padding: 16px;
+}
+.gdui-dialog {
+  display: flex; flex-direction: column; width: 640px; max-width: 100%; max-height: min(640px, 100%);
+  background: var(--gd-bg); color: var(--gd-fg); border: 1px solid var(--gd-border); border-radius: 10px;
+  box-shadow: var(--gd-shadow); outline: none; overflow: hidden;
+}
+.gdui-narrow { width: 480px; }
+.gdui-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 18px 8px; }
+.gdui-title { margin: 0; font-size: 16px; font-weight: 600; }
+.gdui-account { color: var(--gd-muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.gdui-body { padding: 4px 18px 12px; overflow: auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; }
+.gdui-foot { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-top: 1px solid var(--gd-border); background: var(--gd-soft); }
+.gdui-foot .gdui-grow { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.gdui-msg { margin: 0; color: var(--gd-fg); }
+.gdui-muted { color: var(--gd-muted); }
+.gdui-vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* controls */
+.gdui-input {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--gd-border); border-radius: 6px; background: var(--gd-bg);
+  color: var(--gd-fg); font: inherit;
+}
+.gdui-input:focus-visible, .gdui-list:focus-visible { outline: 2px solid var(--gd-accent); outline-offset: 0; border-color: transparent; }
+.gdui-input[aria-invalid="true"] { border-color: var(--gd-danger); }
+.gdui-label { display: block; margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--gd-muted); }
+.gdui-btn {
+  appearance: none; padding: 6px 14px; border: 1px solid var(--gd-border); border-radius: 6px; background: var(--gd-bg);
+  color: var(--gd-fg); font: inherit; cursor: pointer;
+}
+.gdui-btn:hover:not(:disabled) { border-color: var(--gd-accent); }
+.gdui-btn:focus-visible, .gdui-link:focus-visible, .gdui-choice:focus-visible { outline: 2px solid var(--gd-accent); outline-offset: 2px; }
+.gdui-btn:disabled { opacity: .5; cursor: default; }
+.gdui-btn.gdui-primary { background: var(--gd-accent); border-color: var(--gd-accent); color: var(--gd-accent-fg); font-weight: 600; }
+.gdui-btn.gdui-danger { border-color: var(--gd-danger); color: var(--gd-danger); }
+.gdui-link {
+  appearance: none; border: 0; background: none; padding: 0; color: var(--gd-accent); font: inherit; font-size: 12px;
+  text-decoration: underline; cursor: pointer;
+}
+.gdui-link:disabled { opacity: .5; cursor: default; }
+
+/* list */
+.gdui-listwrap { border: 1px solid var(--gd-border); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; min-height: 200px; max-height: 340px; }
+.gdui-colhead, .gdui-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px 72px; gap: 12px; align-items: center; padding: 0 12px; }
+.gdui-colhead { padding-top: 6px; padding-bottom: 6px; background: var(--gd-soft); border-bottom: 1px solid var(--gd-border); color: var(--gd-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.gdui-list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1 1 auto; min-height: 0; outline: none; }
+.gdui-row { min-height: 36px; padding-top: 6px; padding-bottom: 6px; cursor: default; border-bottom: 1px solid transparent; }
+.gdui-row:hover { background: var(--gd-hover); }
+.gdui-row[aria-selected="true"] { background: var(--gd-sel); box-shadow: inset 3px 0 0 var(--gd-accent); }
+.gdui-fname { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.gdui-fname > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gdui-ico { flex: 0 0 auto; width: 16px; height: 16px; fill: none; stroke: var(--gd-muted); stroke-width: 1.5; }
+.gdui-cell { color: var(--gd-muted); font-size: 12px; white-space: nowrap; }
+.gdui-cell.gdui-num { text-align: right; }
+.gdui-colhead .gdui-num { text-align: right; }
+.gdui-folder-row { grid-template-columns: minmax(0, 1fr); }
+.gdui-more { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px; border-top: 1px solid var(--gd-border); background: var(--gd-soft); }
+.gdui-more .gdui-err { color: var(--gd-danger); font-size: 12px; }
+.gdui-state { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 28px 20px; text-align: center; }
+.gdui-state h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.gdui-state p { margin: 0; color: var(--gd-muted); max-width: 46ch; overflow-wrap: anywhere; }
+.gdui-state.gdui-is-error h3 { color: var(--gd-danger); }
+.gdui-state .gdui-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.gdui-spinner {
+  width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--gd-border); border-top-color: var(--gd-accent);
+  animation: gdui-spin .8s linear infinite;
+}
+.gdui-spinner.gdui-sm { width: 14px; height: 14px; border-width: 2px; }
+@keyframes gdui-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .gdui-spinner { animation-duration: 3s; } }
+.gdui-banner { padding: 6px 10px; border-radius: 6px; background: var(--gd-warn-bg); color: var(--gd-warn); font-size: 12px; }
+.gdui-error-line { color: var(--gd-danger); font-size: 12px; }
+.gdui-hint { font-size: 12px; color: var(--gd-muted); margin: 4px 0 0; overflow-wrap: anywhere; }
+.gdui-crumbs { font-size: 12px; color: var(--gd-muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gdui-crumbs strong { color: var(--gd-fg); font-weight: 600; overflow-wrap: anywhere; }
+.gdui-folders .gdui-listwrap { min-height: 120px; max-height: 190px; }
+
+/* conflict */
+.gdui-conflict { width: 520px; }
+.gdui-conflict .gdui-body { gap: 12px; }
+.gdui-times { margin: 0; padding: 8px 10px; background: var(--gd-soft); border-radius: 6px; font-size: 12px; color: var(--gd-muted); display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; }
+.gdui-times dt { margin: 0; } .gdui-times dd { margin: 0; color: var(--gd-fg); }
+.gdui-choices { display: flex; flex-direction: column; gap: 8px; }
+.gdui-choice {
+  appearance: none; display: flex; flex-direction: column; gap: 2px; text-align: left; width: 100%; padding: 8px 12px;
+  border: 1px solid var(--gd-border); border-radius: 6px; background: var(--gd-bg); color: var(--gd-fg); font: inherit; cursor: pointer;
+}
+.gdui-choice:hover { border-color: var(--gd-accent); background: var(--gd-hover); }
+.gdui-choice .gdui-sub { font-size: 12px; color: var(--gd-muted); }
+.gdui-choice.gdui-danger { border-color: var(--gd-danger); }
+.gdui-choice.gdui-danger > b { color: var(--gd-danger); }
+.gdui-choice.gdui-cancel { align-items: center; font-weight: 600; background: var(--gd-soft); }
+
+/* status badge (inherits page bar colors when available) */
+.gdui-status {
+  --gs-ok: #15803d; --gs-warn: #b45309; --gs-err: #b91c1c; --gs-idle: #6b7280;
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; font: 12px/1.4 system-ui, sans-serif; color: var(--bar-fg, inherit);
+  padding: 2px 8px; border: 1px solid var(--bar-border, #d1d5db); border-radius: 999px; white-space: nowrap; vertical-align: middle;
+}
+:root[data-theme="dark"] .gdui-status, [data-theme="dark"] .gdui-status { --gs-ok: #4ade80; --gs-warn: #fbbf24; --gs-err: #f87171; --gs-idle: #9ca3af; }
+.gdui-status[hidden] { display: none; }
+.gdui-status .gdui-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--gs-idle); }
+.gdui-status[data-state="saved"] .gdui-dot { background: var(--gs-ok); }
+.gdui-status[data-state="saving"] .gdui-dot { background: var(--bar-fg, var(--gs-idle)); animation: gdui-pulse 1s ease-in-out infinite; }
+.gdui-status[data-state="offline"] .gdui-dot, .gdui-status[data-state="signed-out"] .gdui-dot { background: var(--gs-warn); }
+.gdui-status[data-state="error"] .gdui-dot, .gdui-status[data-state="conflict"] .gdui-dot { background: var(--gs-err); }
+.gdui-status[data-state="error"], .gdui-status[data-state="conflict"] { border-color: var(--gs-err); }
+.gdui-status .gdui-stext { overflow: hidden; text-overflow: ellipsis; }
+.gdui-status .gdui-sbtn {
+  appearance: none; border: 0; background: none; padding: 0; margin: 0; font: inherit; color: var(--accent, #2563eb);
+  text-decoration: underline; cursor: pointer;
+}
+.gdui-status .gdui-sbtn:focus-visible { outline: 2px solid var(--accent, #2563eb); outline-offset: 2px; }
+@keyframes gdui-pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .gdui-status .gdui-dot { animation: none !important; } }
+
+/* additions: badges, panel actions */
+.gdui-badge {
+  flex: 0 0 auto; padding: 0 6px; border: 1px solid var(--gd-border); border-radius: 999px; font-size: 11px; line-height: 16px;
+  color: var(--gd-muted); background: var(--gd-soft); white-space: nowrap;
+}
+.gdui-opening { display: inline-flex; align-items: center; gap: 8px; color: var(--gd-muted); font-size: 12px; }
+.gdui-title-wrap { min-width: 0; }
+.gdui-up { flex: 0 0 auto; padding: 2px 10px; font-size: 12px; }
+.gdui-state-host { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+.gdui-state-host .gdui-state { flex: 1 1 auto; }
+.gdui-crumbs > .gdui-crumbs { flex: 1 1 auto; min-width: 0; }
+.gdui-status-live { display: inline-flex; max-width: 100%; }
+
+/* folder search (save dialog) */
+.gdui-searchbox { position: relative; margin: 0 0 6px; }
+.gdui-foldersearch { padding-right: 32px; }
+.gdui-foldersearch::-webkit-search-cancel-button, .gdui-foldersearch::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
+.gdui-clear {
+  appearance: none; position: absolute; top: 50%; right: 6px; transform: translateY(-50%); width: 22px; height: 22px; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; color: var(--gd-muted); font: 16px/22px system-ui, sans-serif; text-align: center; cursor: pointer;
+}
+.gdui-clear:hover { background: var(--gd-hover); color: var(--gd-fg); }
+.gdui-clear:focus-visible { outline: 2px solid var(--gd-accent); outline-offset: 0; }
+.gdui-subhead { padding: 4px 12px; background: var(--gd-soft); border-bottom: 1px solid var(--gd-border); color: var(--gd-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.gdui-ftext { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.gdui-ftext > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gdui-fpath { color: var(--gd-muted); font-size: 11px; }
+.gdui-result-row, .gdui-recent-row { min-height: 40px; }
+.gdui-row[aria-selected="true"] .gdui-fpath { color: var(--gd-fg); }

@@ -4,17 +4,68 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { SCREENS } from './fixture.mjs';
 
+const FOLDER = 'application/vnd.google-apps.folder';
+const FOLDER_MIME_EQ = "mimeType = 'application/vnd.google-apps.folder'";
 export const DRIVE_CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
 
 // ------------------------------------------------------------------------------------------------
 // FakeDrive: in-memory Drive. `log` records every request that reached it.
 // ------------------------------------------------------------------------------------------------
 export class FakeDrive {
-  constructor(files = []) {
-    this.files = new Map(); this.folders = [{ id: 'FOLD1', name: 'Notes' }, { id: 'FOLD2', name: 'Work' }];
+  // opts.defaultFolders (default true): seed two root folders FOLD1 "Notes" and FOLD2 "Work" (what the 10-drive tests expect).
+  constructor(files = [], opts = {}) {
+    this.files = new Map();                // non-folder files only (10-drive asserts on its size)
+    this.dirs = new Map();                 // folders (incl. trashed / shared-drive ones)
+    this.sharedDrives = new Map();         // id -> { id, name }
+    this.ROOT_ID = '0AQAmyDriveRootId';    // real Drive reports the *actual* root id in `parents`, and accepts the alias 'root' in queries/get
     this.log = []; this.hooks = []; this.cors = true; this.minGen = 1; this.alwaysAuthFail = false; this.pageSize = 0;
-    this.t0 = Date.parse('2026-09-29T12:00:00.000Z'); this.tick = 0; this.nextId = 1;
+    this.sharedRootResolvable = true;      // files.get(<shared drive id>) returns the drive name (real Drive does with supportsAllDrives=true)
+    this.nameMatch = 'substring';          // 'token-prefix' mimics real Drive `contains` (word-prefix matching)
+    this.strictQuery = true;               // malformed `q` -> 400 invalid (like Drive). Catches unescaped quotes / lone backslashes.
+    this.maxUrl = 0;                       // >0: requests whose URL is longer get 414
+    this.incompleteSearch = false;         // add incompleteSearch:true to corpora=allDrives responses
+    this.emptyPages = 0;                   // N: each folder list first serves N empty pages that still carry a nextPageToken (Drive may do this)
+    this.forbidden = new Set();            // ids whose files.get answers 403
+    this.t0 = Date.parse('2026-09-29T12:00:00.000Z'); this.tick = 0; this.nextId = 1; this.nextDir = 1;
     for (const f of files) this.add(f);
+    if (opts.defaultFolders !== false) { this.addFolder({ id: 'FOLD1', name: 'Notes' }); this.addFolder({ id: 'FOLD2', name: 'Work' }); }
+  }
+  // ---- folders (test-side emulator extension for folder search) ----
+  addFolder({ id, name, parents, trashed = false, driveId, accessed = true }) {
+    id = id || 'dir' + this.nextDir++;
+    const f = { id, name, mimeType: FOLDER, parents: parents === undefined ? ['root'] : parents, trashed, driveId, accessed, modifiedTime: this.now(), version: 1, body: Buffer.alloc(0), canEdit: true };
+    this.dirs.set(id, f); return f;
+  }
+  addSharedDrive({ id, name }) { this.sharedDrives.set(id, { id, name }); return id; }
+  // tree('Projects/2026/Q3') creates (or reuses) the chain under `root` and returns the leaf. Ids are the joined path.
+  tree(p, { under = 'root', driveId } = {}) {
+    let parent = under, leaf = null;
+    const segs = p.split('/'); let acc = '';
+    for (const seg of segs) {
+      acc = acc ? acc + '/' + seg : seg; const id = 'T:' + (under === 'root' ? '' : under + ':') + acc;
+      leaf = this.dirs.get(id) || this.addFolder({ id, name: seg, parents: [parent], driveId });
+      parent = id;
+    }
+    return leaf;
+  }
+  // ---- request views ----
+  folderReqs() { return this.log.filter((l) => l.path === '/drive/v3/files' && l.method === 'GET' && l.q && l.q.includes(FOLDER_MIME_EQ)); }
+  searchReqs() { return this.folderReqs().filter((l) => / and name contains '/.test(l.q)); }
+  searchQs() { return this.searchReqs().map((l) => l.q); }
+  lookups(id) { return this.log.filter((l) => l.method === 'GET' && /^\/drive\/v3\/files\/[^/]+$/.test(l.path) && l.search.alt !== 'media' && (id === undefined || decodeURIComponent(l.path.split('/').pop()) === id)); }
+  // ---- hook helpers (per-request delay / hold / error injection) ----
+  delay(pred, ms) { this.hooks.push(async (e) => { if (pred(e)) await new Promise((r) => setTimeout(r, typeof ms === 'function' ? ms(e) : ms)); }); }
+  // hold(pred) -> { release(), releaseAll(), held() }: matching requests wait until released (release order = any order the test chooses).
+  hold(pred) {
+    const waiting = []; let open = false;
+    this.hooks.push(async (e) => { if (!open && pred(e)) await new Promise((res) => waiting.push({ e, res })); });
+    return { held: () => waiting.map((w) => w.e), release: (i = 0) => { const [w] = waiting.splice(i, 1); w && w.res(); return !!w; }, releaseAll: () => { open = true; while (waiting.length) waiting.shift().res(); }, count: () => waiting.length };
+  }
+  // inject(pred, { status, reason, message, abort, times }) -> { count, off() }
+  inject(pred, { status = 500, reason, message, abort, times = Infinity } = {}) {
+    const c = { count: 0, on: true, off() { c.on = false; } };
+    this.hooks.push((e) => { if (c.on && c.count < times && pred(e)) { c.count++; return abort ? { abort } : { status, reason, message }; } });
+    return c;
   }
   now() { return new Date(this.t0 + (++this.tick) * 1000).toISOString(); }
   add({ id, name, text = '', canEdit = true, mimeType = 'text/markdown', parents }) {
@@ -30,6 +81,134 @@ export class FakeDrive {
   writes() { return this.log.filter((l) => (l.method === 'PATCH' || (l.method === 'POST' && l.path.startsWith('/upload/'))) && l.status < 300); }
   attempts(method) { return this.log.filter((l) => l.method === method); }
 
+
+  // ------------------------------------------------------------------------------------------------
+  // Folder search emulation (test-side). A faithful-enough subset of Drive v3 files.list `q` grammar:
+  //   term   := field op value | value 'in' parents          (field: name|mimeType|trashed|fullText ; op: = != contains)
+  //   expr   := term { ('and'|'or') term } with parentheses ; strings are '...' with \' and \\ as the only escapes.
+  // Anything else -> 400 "Invalid Value" (strictQuery), which is what makes escaping bugs visible.
+  // ------------------------------------------------------------------------------------------------
+  static parseQ(q) {
+    const toks = []; let i = 0; const bad = (m) => { const e = new Error(m); e.invalidQuery = true; throw e; };
+    while (i < q.length) {
+      const c = q[i];
+      if (/\s/.test(c)) { i++; continue; }
+      if (c === '(' || c === ')') { toks.push({ t: c }); i++; continue; }
+      if (c === "'") {
+        let v = ''; i++; let closed = false;
+        while (i < q.length) {
+          const d = q[i];
+          if (d === '\\') { const n = q[i + 1]; if (n === "'" || n === '\\') { v += n; i += 2; continue; } bad('Invalid escape \\' + (n || 'EOF')); }
+          if (d === "'") { closed = true; i++; break; }
+          v += d; i++;
+        }
+        if (!closed) bad('Unterminated string');
+        toks.push({ t: 'str', v }); continue;
+      }
+      const m = /^(!=|=|[A-Za-z_][A-Za-z0-9_]*)/.exec(q.slice(i));
+      if (!m) bad('Unexpected character ' + JSON.stringify(c) + ' at ' + i);
+      toks.push({ t: 'word', v: m[1] }); i += m[1].length;
+    }
+    let k = 0; const peek = () => toks[k], next = () => toks[k++];
+    const term = () => {
+      const a = next(); if (!a) bad('Unexpected end');
+      if (a.t === '(') { const e = expr(); const r = next(); if (!r || r.t !== ')') bad('Missing )'); return e; }
+      if (a.t === 'str') { const w = next(); const f = next(); if (!w || w.v !== 'in' || !f || f.v !== 'parents') bad('Expected "in parents"'); return { k: 'in', v: a.v }; }
+      if (a.t === 'word') {
+        const op = next(); if (!op || op.t !== 'word' || !['=', '!=', 'contains'].includes(op.v)) bad('Bad operator after ' + a.v);
+        const val = next(); if (!val) bad('Missing value');
+        if (val.t === 'str') return { k: 'cmp', f: a.v, op: op.v, v: val.v };
+        if (val.t === 'word' && (val.v === 'true' || val.v === 'false')) return { k: 'cmp', f: a.v, op: op.v, v: val.v === 'true' };
+        bad('Bad value');
+      }
+      bad('Unexpected token');
+    };
+    const and = () => { let l = term(); while (peek() && peek().t === 'word' && peek().v === 'and') { next(); l = { k: 'and', l, r: term() }; } return l; };
+    const expr = () => { let l = and(); while (peek() && peek().t === 'word' && peek().v === 'or') { next(); l = { k: 'or', l, r: and() }; } return l; };
+    const ast = expr(); if (k !== toks.length) bad('Trailing tokens'); return ast;
+  }
+  // Drive: `trashed` is true for an item trashed explicitly OR via a trashed parent folder.
+  effTrashed(f, depth = 0) { if (f.trashed) return true; const par = (f.parents || [])[0]; const pf = par && depth < 50 ? this.dirs.get(par) : null; return pf ? this.effTrashed(pf, depth + 1) : false; }
+  isRootId(x) { return x === 'root' || x === this.ROOT_ID; }
+  outParents(f) { return (f.parents || []).map((x) => (x === 'root' ? this.ROOT_ID : x)); }
+  evalQ(ast, f) {
+    switch (ast.k) {
+      case 'and': return this.evalQ(ast.l, f) && this.evalQ(ast.r, f);
+      case 'or': return this.evalQ(ast.l, f) || this.evalQ(ast.r, f);
+      case 'in': return (f.parents || []).some((x) => x === ast.v || (this.isRootId(x) && this.isRootId(ast.v)));
+      case 'cmp': {
+        if (ast.f === 'name') {
+          const a = String(f.name).toLowerCase(), b = String(ast.v).toLowerCase();
+          if (ast.op === 'contains') return this.nameMatch === 'token-prefix' ? a.split(/[^\p{L}\p{N}]+/u).some((w) => w.startsWith(b)) : a.includes(b);
+          return ast.op === '=' ? f.name === ast.v : f.name !== ast.v;
+        }
+        if (ast.f === 'mimeType') return ast.op === '=' ? f.mimeType === ast.v : ast.op === '!=' ? f.mimeType !== ast.v : String(f.mimeType).includes(ast.v);
+        if (ast.f === 'trashed') { const t = this.effTrashed(f); return ast.op === '=' ? t === ast.v : t !== ast.v; }
+        const e = new Error('Invalid field ' + ast.f); e.invalidQuery = true; throw e;
+      }
+    }
+    return false;
+  }
+  // Folder-list request (q contains mimeType = folder). Handles name search, browse (in parents), shared-drive params, orderBy, fields, paging.
+  listFolderQuery(u, done, err) {
+    const sp = u.searchParams; const q = sp.get('q') || '';
+    let ast; try { ast = FakeDrive.parseQ(q); } catch (e) { if (e.invalidQuery && this.strictQuery) return err(400, 'Invalid Value', 'invalid'); throw e; }
+    const orderBy = sp.get('orderBy');
+    const ORDERS = ['createdTime', 'folder', 'modifiedByMeTime', 'modifiedTime', 'name', 'name_natural', 'quotaBytesUsed', 'recency', 'sharedWithMeTime', 'starred', 'viewedByMeTime'];
+    if (orderBy) for (const part of orderBy.split(',')) { const [k, dir] = part.trim().split(/\s+/); if (!ORDERS.includes(k) || (dir && dir !== 'desc')) return err(400, 'Invalid Value', 'invalidOrderBy'); }
+    const corpora = sp.get('corpora'); const sup = sp.get('supportsAllDrives') === 'true', inc = sp.get('includeItemsFromAllDrives') === 'true';
+    if (corpora === 'drive' && !sp.get('driveId')) return err(400, 'driveId must be specified when corpora=drive', 'invalid');
+    if (corpora && !['user', 'domain', 'drive', 'allDrives'].includes(corpora)) return err(400, 'Invalid Value', 'invalid');
+    const visible = (f) => {
+      if (!f.driveId) return corpora !== 'drive'; // My Drive items are not in a `drive` corpus
+      if (!sup || !inc) return false;
+      if (!corpora || corpora === 'user') return f.accessed !== false; // documented: `user` = items the user has accessed
+      if (corpora === 'allDrives') return true;
+      if (corpora === 'drive') return f.driveId === sp.get('driveId');
+      return false;
+    };
+    let list = [...this.dirs.values(), ...this.files.values()].filter((f) => visible(f) && this.evalQ(ast, f));
+    const nat = orderBy && /name_natural/.test(orderBy), desc = orderBy && /desc/.test(orderBy);
+    const cmp = nat ? (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) : (a, b) => (a.name.toLowerCase() < b.name.toLowerCase() ? -1 : a.name.toLowerCase() > b.name.toLowerCase() ? 1 : 0);
+    if (orderBy && /name/.test(orderBy)) list.sort((a, b) => (desc ? -1 : 1) * cmp(a, b) || a.id.localeCompare(b.id)); else list.sort((a, b) => a.id.localeCompare(b.id));
+    const size = this.pageSize || Math.min(1000, Number(sp.get('pageSize')) || 100);
+    // page token: "<qhash>:<emptyLeft>:<offset>"  (invalid / foreign tokens are rejected like Drive does)
+    const qh = this.hash(q + '|' + corpora + '|' + orderBy);
+    let off = 0, emptyLeft = this.emptyPages; const pt = sp.get('pageToken');
+    if (pt) { const m = /^([0-9a-f]+):(\d+):(\d+)$/.exec(pt); if (!m || m[1] !== qh) return err(400, 'Invalid Value', 'invalid'); emptyLeft = Number(m[2]); off = Number(m[3]); }
+    else if (emptyLeft) { return done(200, { files: [], nextPageToken: `${qh}:${emptyLeft - 1}:0`, ...(this.incompleteSearch && corpora === 'allDrives' ? { incompleteSearch: true } : {}) }); }
+    else emptyLeft = 0;
+    if (pt && emptyLeft > 0 && off === 0) return done(200, { files: [], nextPageToken: `${qh}:${emptyLeft - 1}:0` });
+    const slice = list.slice(off, off + size);
+    const fields = this.fieldsOf(sp.get('fields'), 'files');
+    const out = slice.map((f) => this.project(f.mimeType === FOLDER ? { id: f.id, name: f.name, mimeType: f.mimeType, parents: this.outParents(f), trashed: !!f.trashed, driveId: f.driveId } : this.meta(f), fields));
+    const body = { files: out }; if (off + size < list.length) body.nextPageToken = `${qh}:0:${off + size}`;
+    if (this.incompleteSearch && corpora === 'allDrives') body.incompleteSearch = true;
+    return done(200, body);
+  }
+  hash(s) { let h = 5381; for (const c of s) h = ((h * 33) ^ c.codePointAt(0)) >>> 0; return h.toString(16); }
+  // "nextPageToken,files(id,name,parents)" -> Set('id','name','parents') for the `files` (or top-level) resource; null = everything
+  fieldsOf(fields, inside) {
+    if (!fields) return null;
+    if (inside) { const m = new RegExp(inside + '\\(([^)]*)\\)').exec(fields); return m ? new Set(m[1].split(',').map((x) => x.trim().split('/')[0])) : new Set(); }
+    return new Set(fields.split(',').map((x) => x.trim().split('/')[0]));
+  }
+  project(obj, fields) { if (!fields) return obj; const o = {}; for (const k of Object.keys(obj)) if (fields.has(k)) o[k] = obj[k]; return o; }
+  // GET /files/:id for folders, the My Drive root alias and shared-drive roots. Returns true if handled.
+  dirLookup(id, u, done, err) {
+    const sp = u.searchParams; const sup = sp.get('supportsAllDrives') === 'true';
+    const fields = this.fieldsOf(sp.get('fields'));
+    if (this.forbidden.has(id)) { err(403, 'The user does not have sufficient permissions for this file.', 'insufficientFilePermissions'); return true; }
+    if (this.isRootId(id)) { done(200, this.project({ id: this.ROOT_ID, name: 'My Drive', mimeType: FOLDER }, fields)); return true; }
+    if (this.sharedDrives.has(id)) {
+      if (!sup || !this.sharedRootResolvable) { err(404, 'File not found: ' + id + '.', 'notFound'); return true; }
+      done(200, this.project({ id, name: this.sharedDrives.get(id).name, mimeType: FOLDER, driveId: id }, fields)); return true;
+    }
+    const f = this.dirs.get(id); if (!f) return false;
+    if (f.driveId && !sup) { err(404, 'File not found: ' + id + '.', 'notFound'); return true; }
+    done(200, this.project({ id: f.id, name: f.name, mimeType: FOLDER, parents: this.outParents(f), trashed: !!f.trashed, driveId: f.driveId }, fields)); return true;
+  }
+
   async handle(route) {
     const req = route.request(); const u = new URL(req.url()); const method = req.method();
     const H = this.cors ? { ...DRIVE_CORS } : {};
@@ -37,11 +216,12 @@ export class FakeDrive {
     if (method === 'OPTIONS') { this.log.push({ method, host: u.host, path: u.pathname, status: 204, preflight: true }); return route.fulfill({ status: this.cors ? 204 : 405, headers: H }); }
     const hdr = req.headers();
     const buf = req.postDataBuffer();
-    const entry = { method, host: u.host, path: u.pathname, search: Object.fromEntries(u.searchParams), url: req.url(), auth: hdr.authorization, ct: hdr['content-type'], body: buf, status: 0 };
+    const entry = { method, host: u.host, path: u.pathname, search: Object.fromEntries(u.searchParams), q: u.searchParams.get('q'), url: req.url(), t: Date.now(), auth: hdr.authorization, ct: hdr['content-type'], body: buf, status: 0 };
     this.log.push(entry);
     const done = (status, body, extra) => { entry.status = status; return fulfill(status, body, extra); };
     const err = (status, message, reason) => done(status, { error: { code: status, message, errors: reason ? [{ reason, message }] : [] } });
     for (const h of this.hooks) { const r = await h(entry, this); if (r) { if (r.abort) { entry.status = -1; return route.abort(r.abort === true ? 'internetdisconnected' : r.abort); } return err(r.status, r.message || 'injected ' + r.status, r.reason); } }
+    if (this.maxUrl && req.url().length > this.maxUrl) return err(414, 'Request-URI Too Large');
     if (u.host === 'oauth2.googleapis.com') return done(200, {});
     const m = /^Bearer TOK(\d+)$/.exec(entry.auth || '');
     if (this.alwaysAuthFail || !m || Number(m[1]) < this.minGen) return err(401, 'Invalid Credentials');
@@ -49,9 +229,9 @@ export class FakeDrive {
     if (p === '/drive/v3/about') return done(200, { user: { emailAddress: 'tester@example.com', displayName: 'Tester' } });
     if (p === '/drive/v3/files' && method === 'GET') {
       const q = u.searchParams.get('q') || '';
+      if (q.includes(FOLDER_MIME_EQ)) return this.listFolderQuery(u, done, err);
       let list;
-      if (/mimeType = 'application\/vnd\.google-apps\.folder' and/.test(q)) list = this.folders.map((f) => ({ id: f.id, name: f.name }));
-      else {
+      {
         const uq = / and name contains '((?:[^'\\]|\\.)*)'/.exec(q);
         list = [...this.files.values()].filter((f) => !f.trashed && (!uq || f.name.toLowerCase().includes(uq[1].replace(/\\(.)/g, '$1').toLowerCase())))
           .sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime)).map((f) => this.meta(f));
@@ -61,6 +241,7 @@ export class FakeDrive {
       return done(200, { files: page, nextPageToken: off + size < list.length ? String(off + size) : undefined });
     }
     let mm = /^\/drive\/v3\/files\/([^/]+)$/.exec(p);
+    if (mm && method === 'GET' && this.dirLookup(decodeURIComponent(mm[1]), u, done, err)) return;
     if (mm && method === 'GET') {
       const f = this.files.get(decodeURIComponent(mm[1])); if (!f || f.trashed) return err(404, 'File not found', 'notFound');
       if (u.searchParams.get('alt') === 'media') return done(200, f.body, { 'content-type': 'text/markdown; charset=UTF-8' });

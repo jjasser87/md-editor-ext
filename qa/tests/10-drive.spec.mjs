@@ -300,7 +300,7 @@ test.describe('Drive conflict (mock api)', () => {
     const p = r.page; const localText = await md(p);
     await p.locator('.gdui-conflict [data-choice="save-copy"]').click();
     await p.locator('.gdui-dialog').waitFor();
-    await expect(p.locator('.gdui-dialog input.gdui-input')).toHaveValue('Copy of notes.md');
+    await expect(p.locator('.gdui-dialog input.gdui-input:not([data-role=folder-search])')).toHaveValue('Copy of notes.md');
     await p.locator('.gdui-dialog [data-action="save"]').click();
     await expect(badge(p)).toHaveAttribute('data-state', 'saved');
     const cf = await calls(p, 'createFile'); expect(cf.length).toBe(1);
@@ -344,7 +344,7 @@ test.describe('Drive read-only, not-configured, errors (mock api)', () => {
     await appendText(p, 'my edit');
     await p.keyboard.press('Control+s');
     await p.locator('.gdui-dialog').waitFor();
-    await expect(p.locator('.gdui-dialog input.gdui-input')).toHaveValue('Copy of shared.md');
+    await expect(p.locator('.gdui-dialog input.gdui-input:not([data-role=folder-search])')).toHaveValue('Copy of shared.md');
     expect((await calls(p, 'saveFile')).length).toBe(0);
     // cancel -> nothing, still dirty
     await p.keyboard.press('Escape'); await p.locator('.gdui-dialog').waitFor({ state: 'detached' });
@@ -679,7 +679,7 @@ test.describe('Drive (real api.js + stubbed identity + routed googleapis)', () =
     const r = await openDriveEditor(ext, R(d)); const p = r.page;
     await openDlg(p); await expect(p.locator('.gdui-badge')).toHaveText('Read-only'); await p.locator('.gdui-row').dblclick(); await p.locator('.gdui-dialog').waitFor({ state: 'detached' });
     await appendText(p, 'mine'); await p.keyboard.press('Control+s'); await p.locator('.gdui-dialog').waitFor();
-    await expect(p.locator('.gdui-dialog input.gdui-input')).toHaveValue('Copy of shared.md');
+    await expect(p.locator('.gdui-dialog input.gdui-input:not([data-role=folder-search])')).toHaveValue('Copy of shared.md');
     await p.locator('.gdui-dialog [data-action="save"]').click(); await expect(badge(p)).toHaveAttribute('data-state', 'saved');
     expect(d.attempts('PATCH').length).toBe(0); expect(d.text('ro')).toBe('# Shared\n');
     const copy = [...d.files.values()].find((f) => f.name === 'Copy of shared.md'); expect(copy.body.toString()).toContain('mine');
@@ -781,8 +781,8 @@ test.describe('Drive (real api.js + stubbed identity + routed googleapis)', () =
     await pm(p).click(); await p.keyboard.type('Hello Drive');
     const text = await md(p);
     await p.click('#btn-drive-save'); await p.locator('.gdui-dialog').waitFor();
-    await expect(p.locator('.gdui-dialog input.gdui-input')).toHaveValue('Untitled.md');
-    await p.locator('.gdui-dialog input.gdui-input').fill('my notes'); // .md must be appended
+    await expect(p.locator('.gdui-dialog input.gdui-input:not([data-role=folder-search])')).toHaveValue('Untitled.md');
+    await p.locator('.gdui-dialog input.gdui-input:not([data-role=folder-search])').fill('my notes'); // .md must be appended
     await expect(p.locator('.gdui-dialog .gdui-hint')).toContainText('my notes.md');
     await p.locator('.gdui-dialog [data-action="save"]').click();
     await expect(badge(p)).toHaveAttribute('data-state', 'saved');
@@ -803,13 +803,13 @@ test.describe('Drive (real api.js + stubbed identity + routed googleapis)', () =
     const d = newDrive([]); const r = await openDriveEditor(ext, R(d)); const p = r.page;
     await pm(p).click(); await p.keyboard.type('x');
     await p.click('#btn-drive-save'); await p.locator('.gdui-dialog').waitFor();
-    await p.locator('.gdui-dialog input.gdui-input').fill('a/b'); await p.keyboard.press('Enter');
+    await p.locator('.gdui-dialog input.gdui-input:not([data-role=folder-search])').fill('a/b'); await p.keyboard.press('Enter');
     await expect(p.locator('.gdui-dialog .gdui-error-line')).toContainText(/can.t contain/);
     await p.keyboard.press('Escape'); await p.locator('.gdui-dialog').waitFor({ state: 'detached' });
     expect(d.log.filter((l) => l.method === 'POST').length).toBe(0);
     await p.click('#btn-drive-save'); await p.locator('.gdui-dialog').waitFor();
     await p.locator('.gdui-folder-row', { hasText: 'Work' }).dblclick();
-    await p.locator('.gdui-dialog input.gdui-input').fill('in-folder'); await p.locator('.gdui-dialog [data-action="save"]').click();
+    await p.locator('.gdui-dialog input.gdui-input:not([data-role=folder-search])').fill('in-folder'); await p.locator('.gdui-dialog [data-action="save"]').click();
     await expect(badge(p)).toHaveAttribute('data-state', 'saved');
     const post = d.log.find((l) => l.method === 'POST' && l.path.startsWith('/upload')); expect(post.meta.parents).toEqual(['FOLD2']);
   });
@@ -965,7 +965,7 @@ test.describe('Drive drafts + local files interplay (real api)', () => {
     const r = await openDriveEditor(ext, { ...R(d), extraInit: [[fsaStub(), fsaArgs({ openContent: '# Local\n', openName: 'local.md' })]] }); const p = r.page;
     await p.keyboard.press('Control+o'); await expect(p.locator('#filename')).toHaveText('local.md');
     await appendText(p, ' x');
-    await p.click('#btn-drive-save'); await p.locator('.gdui-dialog').waitFor(); await expect(p.locator('.gdui-dialog input.gdui-input')).toHaveValue('local.md');
+    await p.click('#btn-drive-save'); await p.locator('.gdui-dialog').waitFor(); await expect(p.locator('.gdui-dialog input.gdui-input:not([data-role=folder-search])')).toHaveValue('local.md');
     await p.locator('.gdui-dialog [data-action="save"]').click(); await expect(badge(p)).toHaveAttribute('data-state', 'saved');
     const s = await st(p); console.log('after Save-to-Drive from a local-file doc: handle =', s.handle, ' drive =', !!s.drive);
     expect(s.handle).toBeNull(); expect(s.drive).toBeTruthy();
@@ -999,7 +999,7 @@ test.describe('Drive round-trip fidelity (real api, byte-exact via routed FakeDr
     expect(d.bytes('u').equals(Buffer.from(want, 'utf8'))).toBe(true);
     // create: fresh doc
     await setMd(p, '# N\n\n' + U + '\n'); await p.evaluate(() => { window.__mdwe.state.drive = null; }); // detach -> create path
-    await p.click('#btn-drive-save'); await p.locator('.gdui-dialog').waitFor(); await p.locator('.gdui-dialog input.gdui-input').fill('uni'); await p.locator('.gdui-dialog [data-action="save"]').click();
+    await p.click('#btn-drive-save'); await p.locator('.gdui-dialog').waitFor(); await p.locator('.gdui-dialog input.gdui-input:not([data-role=folder-search])').fill('uni'); await p.locator('.gdui-dialog [data-action="save"]').click();
     await expect(badge(p)).toHaveAttribute('data-state', 'saved');
     const post = d.log.find((l) => l.method === 'POST' && l.path.startsWith('/upload'));
     expect(post.content).toBe(await md(p)); expect(post.content).toContain(U);

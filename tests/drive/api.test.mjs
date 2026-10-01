@@ -4,12 +4,12 @@ import { createDriveApi, DriveError } from '../../src/drive/api.js';
 
 let pass = 0; const t = async (name, fn) => { try { await fn(); pass++; console.log('ok  ', name); } catch (e) { console.error('FAIL', name, '\n', e); process.exitCode = 1; } };
 const resp = (status, body, text) => ({ status, ok: status >= 200 && status < 300, statusText: 'S' + status, json: async () => body, text: async () => text ?? JSON.stringify(body) });
-function mk({ tokens = ['T1', 'T2'], handler }) {
+function mk({ tokens = ['T1', 'T2'], handler, storage }) {
   const calls = []; let ti = 0, removed = [];
   globalThis.chrome = { runtime: { lastError: null } };
   const identity = { getAuthToken: (o, cb) => cb(tokens[Math.min(ti++, tokens.length - 1)]), removeCachedAuthToken: (o, cb) => { removed.push(o.token); cb(); }, clearAllCachedAuthTokens: (cb) => cb() };
   const fetch = async (url, init = {}) => { calls.push({ url: String(url), init }); return handler(String(url), init, calls.length); };
-  return { api: createDriveApi({ identity, fetch }), calls, removed };
+  return { api: createDriveApi({ identity, fetch, storage }), calls, removed };
 }
 const meta = (o = {}) => ({ id: 'f1', name: 'a.md', mimeType: 'text/markdown', modifiedTime: '2026-01-01T00:00:00.000Z', version: '3', size: '5', capabilities: { canEdit: true }, ...o });
 
@@ -86,5 +86,46 @@ await t('isSignedIn / signIn / not-configured mapping', async () => {
 await t('listFolders + getAccountLabel', async () => {
   const { api } = mk({ handler: (u) => u.includes('/about') ? resp(200, { user: { emailAddress: 'a@b.c' } }) : resp(200, { files: [{ id: 'd', name: 'Docs' }] }) });
   assert.equal(await api.getAccountLabel(), 'a@b.c'); assert.deepEqual((await api.listFolders()).folders, [{ id: 'd', name: 'Docs' }]);
+});
+await t('listFolders query: searches all folders, escapes, adds parent path', async () => {
+  const tree = { R: { name: 'My Drive', parents: [] }, P: { name: 'Projects', parents: ['R'] } };
+  const { api, calls } = mk({ handler: (u) => {
+    const m = u.match(/\/files\/([A-Za-z0-9_-]+)\?/);
+    if (m) return resp(200, { id: m[1], ...tree[m[1]] });
+    return resp(200, { nextPageToken: 'N', files: [{ id: 'f1', name: "Bob's", parents: ['P'] }, { id: 'f2', name: 'Top', parents: ['R'] }, { id: 'f3', name: 'Orphan' }] });
+  } });
+  const r = await api.listFolders({ query: " Bob's \\ ", parentId: 'IGNORED', pageToken: 'T' });
+  const url = decodeURIComponent(calls[0].url.replace(/\+/g, ' '));
+  assert.ok(url.includes("name contains 'Bob\\'s \\\\'"), url); assert.ok(!url.includes('IGNORED') && !url.includes('in parents'));
+  assert.ok(url.includes('trashed = false') && url.includes('pageToken=T') && url.includes('includeItemsFromAllDrives=true'));
+  assert.deepEqual(r.folders, [{ id: 'f1', name: "Bob's", path: 'My Drive / Projects' }, { id: 'f2', name: 'Top', path: 'My Drive' }, { id: 'f3', name: 'Orphan', path: undefined }]);
+  assert.equal(r.nextPageToken, 'N'); assert.equal(calls.filter((c) => c.url.includes('/files/P?')).length, 1, 'parent lookups are cached');
+});
+await t('listFolders blank/whitespace query behaves as browse', async () => {
+  const { api, calls } = mk({ handler: () => resp(200, { files: [{ id: 'd', name: 'Docs' }] }) });
+  const r = await api.listFolders({ query: '   ', parentId: 'abc' });
+  assert.ok(decodeURIComponent(calls[0].url.replace(/\+/g, ' ')).includes("'abc' in parents")); assert.deepEqual(r.folders, [{ id: 'd', name: 'Docs' }]);
+});
+await t('recent folders: stored newest-first, deduped, capped, saved after createFile', async () => {
+  const mem = {}; const storage = { get: async (k) => ({ [k]: mem[k] }), set: async (o) => Object.assign(mem, o) };
+  const { api } = mk({ storage, handler: (u) => (u.includes('uploadType') ? resp(200, meta()) : resp(200, { id: 'F', name: 'Fold', parents: [] })) });
+  assert.deepEqual(await api.getRecentFolders(), []);
+  for (let i = 0; i < 10; i++) await api.addRecentFolder({ id: 'x' + i, name: 'n' + i });
+  await api.addRecentFolder({ id: 'x5', name: 'n5' }); await api.addRecentFolder({ id: 'root', name: 'My Drive' });
+  const r = await api.getRecentFolders(); assert.equal(r.length, 8); assert.equal(r[0].id, 'x5'); assert.equal(r.filter((x) => x.id === 'x5').length, 1);
+  await api.createFile('n', 'hi', { parentId: 'F' }); await new Promise((r2) => setTimeout(r2, 20));
+  assert.equal((await api.getRecentFolders())[0].id, 'F');
+});
+await t('folder search: concurrent parent lookups deduped; failures not cached; corpora=allDrives; incompleteSearch passed through', async () => {
+  let fail = true; const n = {};
+  const { api, calls } = mk({ handler: (u) => {
+    const m = u.match(/\/files\/([A-Za-z0-9_-]+)\?/);
+    if (m) { n[m[1]] = (n[m[1]] || 0) + 1; if (m[1] === 'Q' && fail) return resp(500, {}); return resp(200, { id: m[1], name: m[1] + 'name', parents: [] }); }
+    return resp(200, { incompleteSearch: true, files: Array.from({ length: 40 }, (_, i) => ({ id: 'f' + i, name: 'x' + i, parents: [i === 0 ? 'Q' : 'P'] })) });
+  } });
+  const r = await api.listFolders({ query: 'x' });
+  assert.equal(n.P, 1, 'one lookup for 40 siblings'); assert.ok(decodeURIComponent(calls[0].url).includes('corpora=allDrives'));
+  assert.equal(r.incompleteSearch, true); assert.equal(r.folders[0].path, undefined); assert.equal(r.folders[1].path, 'Pname');
+  fail = false; const r2 = await api.listFolders({ query: 'x' }); assert.equal(r2.folders[0].path, 'Qname', 'failed lookup retried');
 });
 console.log(pass + ' passed'); 
