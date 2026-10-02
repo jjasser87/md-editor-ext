@@ -4,7 +4,7 @@ import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-export const EXT = path.join(ROOT, 'extension');
+export const EXT = process.env.MDWE_EXT_DIR || path.join(ROOT, 'extension'); // MDWE_EXT_DIR: QA-only override (e.g. a patched COPY of extension/ in /tmp to check a suggested fix)
 export const SCREENS = path.join(ROOT, 'qa', 'screens');
 export { expect };
 

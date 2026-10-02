@@ -3,7 +3,7 @@ import * as files from './files.js';
 import { createDriveApi } from '../drive/api.js';
 import { openDriveDialog, saveToDriveDialog, confirmConflict, createDriveStatus, statusForError } from '../drive-ui/index.js';
 
-import { SLOT_PREFIX, LEGACY_KEYS, holdSlot, holdNumber, openDraftsDialog, countDrafts } from './drafts.js';
+import { SLOT_PREFIX, LEGACY_KEYS, holdSlot, holdNumber, claimedEarlierElsewhere, allocNumber, openDraftsDialog, countDrafts } from './drafts.js';
 
 const $ = (id) => document.getElementById(id);
 const DRAFT_KEY = 'mdwe.draft';           // untitled (never opened/saved) document
@@ -13,6 +13,9 @@ const AUTOSAVE_MS = 800;
 
 const state = { slot: null, loaded: false, drive: null, handle: null, name: 'Untitled.md', savedText: '', dirty: false, theme: 'light', source: false };
 let editor = null;
+let numHandle = null; // lock marking this tab's Untitled-N number as in use
+const NUM_RE = /^Untitled-(\d+)\.md$/i;
+async function takeNumber(n) { if (numHandle) numHandle.release(); numHandle = null; state.num = null; if (n) { state.num = n; numHandle = await holdNumber(n); } }
 let draftTimer = null;
 let driveApi = createDriveApi();
 let driveStatus = null;
@@ -27,6 +30,7 @@ function setStatus(msg, ms = 2500) {
   if (msg && ms) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, ms);
 }
 function renderTitle() {
+  if (numHandle) { const mm = NUM_RE.exec(state.name); if (!mm || Number(mm[1]) !== state.num) { numHandle.release(); numHandle = null; state.num = null; } } // saved / renamed / replaced: its Untitled number is free again
   const el = $('filename');
   el.textContent = state.name; el.classList.toggle('dirty', state.dirty);
   document.title = (state.dirty ? '• ' : '') + state.name + ' — Markdown Editor';
@@ -68,6 +72,7 @@ function onChange() {
 function saveDraft() {
   state.dirty = editor.getMarkdown() !== state.savedText;
   if (!state.dirty) return clearDraft();
+  if (state.slot && !state.drive && !state.handle && /^Untitled-\d+\.md$/i.test(state.name) && !editor.getMarkdown().trim()) return clearDraft(); // a blank note leaves no draft behind (and so holds no Untitled number)
   store.set({ [draftKey()]: { text: editor.getMarkdown(), name: state.name, savedAt: Date.now(), drive: state.drive ? { id: state.drive.id, modifiedTime: state.drive.modifiedTime, canEdit: state.drive.canEdit } : null } })
     .then(() => setStatus('Draft autosaved', 1200))
     .catch(() => setStatus('Draft autosave failed'));
@@ -226,25 +231,43 @@ async function init() {
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (docId && !UUID.test(docId)) docId = null;
   if (!src && (docId || params.has('new'))) {
-    let n = parseInt(params.get('n') || params.get('new'), 10); if (!(n >= 1 && n <= 999999)) n = 1;
+    let n = parseInt(params.get('n') || params.get('new'), 10); if (!(n >= 1 && n <= 999999)) n = null;
     let copyFrom = null;
     if (!docId) { docId = crypto.randomUUID(); await holdSlot(SLOT_PREFIX + docId); }
     else if (!(await holdSlot(SLOT_PREFIX + docId))) { // another tab already edits this note (Duplicate tab): work on a copy, never two editors on one slot
       copyFrom = SLOT_PREFIX + docId; docId = crypto.randomUUID(); await holdSlot(SLOT_PREFIX + docId);
     }
-    history.replaceState(null, '', '?doc=' + docId + '&n=' + n); // reload / restored tab keeps this note
-    state.slot = SLOT_PREFIX + docId; state.name = 'Untitled-' + n + '.md';
-    holdNumber(n);
+    state.slot = SLOT_PREFIX + docId;
     const mine = await storeGet(copyFrom || state.slot);
-    if (mine && mine.text) {
+    const hasText = !!(mine && mine.text);
+    let mineName = hasText && typeof mine.name === 'string' ? mine.name : null;
+    if (hasText) {
+      const nm = mineName && NUM_RE.exec(mineName);
+      if (copyFrom && nm) { n = await allocNumber(); mineName = 'Untitled-' + n + '.md'; } // a duplicated tab's copy gets its own number
+      else n = nm ? Number(nm[1]) : null; // a restored note keeps the number in its own name (none once renamed)
+    } else if (n == null) n = await allocNumber();
+    history.replaceState(null, '', '?doc=' + docId + (n ? '&n=' + n : '')); // reload / restored tab keeps this note
+    state.name = n ? 'Untitled-' + n + '.md' : 'Untitled.md';
+    await takeNumber(n);
+    if (hasText) {
       suppress = true; editor.setMarkdown(mine.text); suppress = false;
-      state.name = mine.name || state.name; state.savedText = ''; state.dirty = true; state.drive = mine.drive || null;
+      state.name = mineName || state.name; state.savedText = ''; state.dirty = true; state.drive = mine.drive || null;
       renderTitle(); setStatus(copyFrom ? 'This note is open in another tab: working on a copy' : 'Restored autosaved draft', 4000);
       if (copyFrom) saveDraft();
     } else {
       renderTitle();
       const k = await countDrafts(state.slot).catch(() => 0);
       if (k) setStatus(k + ' unsaved draft' + (k > 1 ? 's' : '') + ' from earlier: see Drafts', 6000);
+    }
+    // A blank note writes no draft, so another tab can be handed the same number (reload gap, duplicated tab, back/forward). Of two blank tabs with one number, the one that claimed it later takes a fresh number.
+    if (n && !hasText && numHandle && (await claimedEarlierElsewhere(n, numHandle))) {
+      await new Promise((r) => setTimeout(r, 500));
+      if (!state.dirty && !editor.getMarkdown().trim() && state.num === n && numHandle && (await claimedEarlierElsewhere(n, numHandle))) {
+        const n2 = await allocNumber();
+        history.replaceState(null, '', '?doc=' + docId + '&n=' + n2);
+        state.name = 'Untitled-' + n2 + '.md';
+        await takeNumber(n2); renderTitle();
+      }
     }
     editor.focus && editor.focus();
     refreshDraftCount();

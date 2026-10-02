@@ -1,5 +1,5 @@
 // 14. "NEW NOTE PER CLICK" (build index-BCILrRUb.js).  Toolbar icon / #btn-new / Alt+N open a NEW tab at editor/index.html?new=N, which rewrites itself to ?doc=<uuid>&n=N.
-//     Counter = chrome.storage.session['mdwe.untitledNext'] (serialized in background.js); per-tab draft slot = chrome.storage.local['mdwe.draft.doc.<uuid>'];
+//     Numbering (round 3, build index-Cvo1EJ2m.js): background hands out the LOWEST free N (not held by a mdwe-num-N lock, not used by a stored draft with real text named Untitled-N.md, not in the 30 s reservation chrome.storage.session['mdwe.untitledPending']), serialized; per-tab draft slot = chrome.storage.local['mdwe.draft.doc.<uuid>'];
 //     Web Locks (round 2 build index-DrD0oqKO.js): 'mdwe-slot:<storage key>' (doc tabs exclusive+ifAvailable; plain/?src= tabs SHARED on mdwe.draft + mdwe.draft.file) marks an open draft, 'mdwe-num-<N>' (shared) reserves Untitled-N; Drafts dialog (#btn-drafts -> .drafts-box / .drafts-item / .drafts-open / .drafts-discard).
 //   !! A real toolbar click cannot be produced headlessly: "icon click" = calling the REAL chrome.action.onClicked listeners inside the service worker
 //      (chrome.action.onClicked.dispatch(activeTab)) - same mechanism as spec 02.  Alt+N is NOT a chrome.commands entry (manifest unchanged), it is an in-page keydown handler.
@@ -8,7 +8,7 @@
 //   Tests titled [BUG-n] are probes for a real bug logged in ../BUGS.md: they FAIL until it is fixed.  [fixed #n] = former probe, now a positive regression check.
 //   J (round 2): tests for the Web Lock design itself (names, shared/exclusive, leaks, hangs, duplicate tab copy, races, focus trap).
 import { test, expect, md, setMd, storageGet, SCREENS, ROOT, EXT, openEditor, fsaStub, fsaArgs } from '../lib/fixture.mjs';
-import { hook, clickIcon, sendNew, info, docId, local, lget, lset, session, sw, pmOf, typeIn, waitDraft, closeTab, sleep, fsaRecorder, seed, uuidRe, nOf, waitNew, EDITOR_RE } from '../lib/notes.mjs';
+import { pending, PENDING_KEY, noCounter, hook, clickIcon, sendNew, info, docId, local, lget, lset, session, sw, pmOf, typeIn, waitDraft, closeTab, sleep, fsaRecorder, seed, uuidRe, nOf, waitNew, EDITOR_RE } from '../lib/notes.mjs';
 import { openDriveEditor, FakeDrive, shot, installMock } from '../lib/drive.mjs';
 import fs from 'node:fs'; import path from 'node:path'; import { execSync } from 'node:child_process';
 
@@ -121,7 +121,7 @@ test.describe('B. rapid clicks', () => {
     for (const t of tabs) expect(docId(t)).toMatch(uuidRe);
     // title and filename match the n= in the URL
     for (const i of infos) { const n = new URL(i.url).searchParams.get('n'); expect(i.name).toBe(`Untitled-${n}.md`); expect(i.title).toContain(i.name); expect(i.filename).toBe(i.name); }
-    expect(await session(ext)).toEqual({ 'mdwe.untitledNext': 6 });
+    await expect.poll(() => pending(ext)).toEqual({}); await noCounter(ext);   // every tab told the background it holds its lock -> reservations released
     // each tab independently editable; slots do not collide
     for (const t of tabs) { const n = nOf((await info(t)).name); await typeIn(t, 'body ' + n); }
     for (const t of tabs) { const n = nOf((await info(t)).name); await waitDraft(t, slotOf(t), 'body ' + n + '\n'); }
@@ -157,18 +157,20 @@ test.describe('B. rapid clicks', () => {
 // =====================================================================================================================
 const nums = async (tabs) => (await Promise.all(tabs.map(info))).map((i) => nOf(i.name));
 test.describe('C. naming counter', () => {
-  test('sequence 1,2,3; closing tabs does NOT recycle numbers; stored-draft numbers are skipped', async ({ ext }) => {
+  test('sequence 1,2,3; closing tabs RECYCLES numbers (lowest free); stored-draft numbers are skipped', async ({ ext }) => {
     const T = hook(ext);
     const [a] = await clickIcon(ext, T); const [b] = await clickIcon(ext, T); const [c] = await clickIcon(ext, T);
     expect(await nums([a, b, c])).toEqual([1, 2, 3]);
     await closeTab(c); await closeTab(b);
     const [d] = await clickIcon(ext, T);
-    expect(nOf((await info(d)).name), 'closing tabs does not recycle numbers (counter is monotonic per browser session)').toBe(4);
-    // a stored draft (Untitled-5 and Untitled-6 from earlier) is skipped
-    await seed(ext, { [SLOT + 'aaaaaaaa-0000-4000-8000-000000000005']: dr('Untitled-5.md', 'five'), 'mdwe.draft': dr('Untitled-6.md', 'six'), 'mdwe.draft.file': dr('Untitled-7.MD', 'seven') });
+    expect(nOf((await info(d)).name), 'lowest free number: 2 (1 still held by tab a)').toBe(2);
+    // stored drafts (Untitled-4 .. Untitled-6 from earlier) are skipped, even in a different slot kind / case
+    await seed(ext, { [SLOT + 'aaaaaaaa-0000-4000-8000-000000000005']: dr('Untitled-4.md', 'four'), 'mdwe.draft': dr('Untitled-5.md', 'five'), 'mdwe.draft.file': dr('Untitled-6.MD', 'six') });
     const [e] = await clickIcon(ext, T);
-    expect(nOf((await info(e)).name)).toBe(8);
-    expect(await session(ext)).toEqual({ 'mdwe.untitledNext': 9 });
+    expect(nOf((await info(e)).name)).toBe(3);
+    const [f] = await clickIcon(ext, T);
+    expect(nOf((await info(f)).name), '4,5,6 are stored drafts').toBe(7);
+    await expect.poll(() => pending(ext)).toEqual({}); await noCounter(ext);
   });
 
   test('non-matching draft names (Untitled.md, Untitled-0.md, Untitled-3.txt, My Untitled-3.md, huge number) do not reserve numbers', async ({ ext }) => {
@@ -247,14 +249,16 @@ test.describe('C. naming counter', () => {
     expect(T.errors).toEqual([]);
   });
 
-  test('Save As default name for every counter value in a fresh tab; tab title for 2- and 3-digit numbers', async ({ ext }) => {
+  test('3-digit numbers: with Untitled-1..99 stored as drafts the next note is Untitled-100 (tab title, file bar, Save As default); an obsolete mdwe.untitledNext=500 in session storage is ignored', async ({ ext }) => {
     const T = hook(ext);
     await ext.ctx.addInitScript(fsaRecorder, {});
-    await sw(ext).evaluate(() => chrome.storage.session.set({ 'mdwe.untitledNext': 123 }));
+    const o = {}; for (let i = 1; i <= 99; i++) o[SLOT + '20000000-0000-4000-8000-' + String(i).padStart(12, '0')] = dr('Untitled-' + i + '.md', 'x' + i);
+    await seed(ext, o);
+    await sw(ext).evaluate(() => chrome.storage.session.set({ 'mdwe.untitledNext': 500 }));
     const [t] = await clickIcon(ext, T);
-    expect((await info(t)).title).toBe('Untitled-123.md — Markdown Editor');
+    expect((await info(t)).title).toBe('Untitled-100.md — Markdown Editor');
     await typeIn(t, 'x'); await t.keyboard.press('Control+Shift+s');
-    await expect.poll(() => t.evaluate(() => window.__fsa.saveAs)).toEqual(['Untitled-123.md']);
+    await expect.poll(() => t.evaluate(() => window.__fsa.saveAs)).toEqual(['Untitled-100.md']);
   });
 });
 
@@ -309,10 +313,11 @@ test.describe('D. reload restore', () => {
     expect(docId(r2.page)).not.toBe(docId(r1.page));
   });
 
-  test('garbled params: n=abc / n=0 / n=-5 / n=1.9 / n=1e3 / n= / new=abc / new without value -> sane name, no crash', async ({ ext }) => {
+  test('[fixed #50] garbled params: n=abc / n=0 / n=-5 / n=1.9 / n=1e3 / n= / new=abc / new without value -> sane name, no crash', async ({ ext }) => {
     const out = {};
     for (const q of ['?new=abc', '?new=', '?new', '?new=0', '?new=-5', '?new=1.9', '?new=1e3', '?new=007', '?new=%00', '?new=99999999999999999999', '?doc=' + '11111111-1111-4111-8111-111111111111' + '&n=abc', '?doc=22222222-2222-4222-8222-222222222222&n=-3', '?doc=33333333-3333-4333-8333-333333333333', '?doc=44444444-4444-4444-8444-444444444444&n=0']) {
       const r = await openEditor(ext, { query: q });
+      await expect.poll(async () => (await info(r.page)).name, { message: q + ': the page asks the background for a number (alloc-number) when the URL has no usable n' }).toMatch(/^Untitled-[1-9]\d*\.md$/);
       const i = await info(r.page); out[q] = i.name;
       expect(r.errors, q).toEqual([]);
       expect(i.slot, q).toMatch(/^mdwe\.draft\.doc\./);
@@ -323,11 +328,12 @@ test.describe('D. reload restore', () => {
     for (const [q, name] of Object.entries(out)) expect(name, q).toMatch(/^Untitled-[1-9]\d*\.md$/); 
   });
 
-  test('[fixed #36] n=-5 / huge n are clamped: no "Untitled--5.md" / 21-digit names', async ({ ext }) => {
+  test('[fixed #50] n=-5 / huge n are replaced by a fresh number (was: clamped to 1, #36): no "Untitled--5.md" / 21-digit names', async ({ ext }) => {
+    // round 4: an unusable n is no longer 'clamped to 1' - the page asks the background (alloc-number) for a fresh lowest-free number (async: wait for it)
     const r = await openEditor(ext, { query: '?new=-5' });
-    expect((await info(r.page)).name).toMatch(/^Untitled-[1-9]\d*\.md$/);
+    await expect.poll(async () => (await info(r.page)).name).toMatch(/^Untitled-[1-9]\d*\.md$/);
     const r2 = await openEditor(ext, { query: '?new=99999999999999999999' });
-    expect((await info(r2.page)).name).toMatch(/^Untitled-\d{1,9}\.md$/);
+    await expect.poll(async () => (await info(r2.page)).name).toMatch(/^Untitled-\d{1,9}\.md$/);
   });
 
   test('?doc= edge values: empty doc (+new), garbage id, id with slashes/dots/spaces/unicode, very long id: no crash, own slot only, no overwrite of another note', async ({ ext }) => {
@@ -359,8 +365,9 @@ test.describe('D. reload restore', () => {
     await seed(ext, { [SLOT + id]: dr('Untitled-9.md', 'stored body') });
     const r = await openEditor(ext, { query: '?doc=' + id });
     expect((await info(r.page)).name).toBe('Untitled-9.md'); expect(await md(r.page)).toBe('stored body');
+    // round 5 (#52): a second tab on the SAME stored note is a duplicate -> its copy (with text) gets its own fresh number
     const r2 = await openEditor(ext, { query: '?doc=' + id + '&n=2' });
-    expect((await info(r2.page)).name).toBe('Untitled-9.md');
+    await expect.poll(async () => (await info(r2.page)).name).toBe('Untitled-1.md'); expect(await md(r2.page)).toBe('stored body');
   });
 
   test('[fixed #43] two tabs on the SAME ?doc= (duplicate-tab / ctrl+shift+T): both load content; no crash; recorded who owns the slot', async ({ ext }) => {
@@ -368,7 +375,7 @@ test.describe('D. reload restore', () => {
     const [a] = await clickIcon(ext, T); await typeIn(a, 'dup');
     await waitDraft(a, slotOf(a), 'dup\n');
     const b = await openEditor(ext, { query: a.url().slice(a.url().indexOf('?')) });
-    expect(await md(b.page)).toBe('dup\n');
+    await expect.poll(() => md(b.page), { timeout: 10000, message: 'copy loads the text (after the allocNumber round trip, #52)' }).toBe('dup\n');
     await typeIn(b.page, '+b'); await sleep(1200);
     const d = await lget(a, slotOf(a));
     test.info().annotations.push({ type: 'info', description: 'two live tabs on one slot: slot text=' + JSON.stringify(d.text) + ' (a=' + JSON.stringify(await md(a)) + ')' });
@@ -987,7 +994,7 @@ async function stopWorker(ext, page) {
 }
 const awaitSw = async (ext) => { const t0 = Date.now(); while (Date.now() - t0 < 10000) { const w = ext.ctx.serviceWorkers().filter((x) => x.url().includes(ext.extId)).pop(); if (w) { try { await w.evaluate(() => 1); ext.sw = w; return w; } catch {} } await sleep(100); } throw new Error('service worker did not come back'); };
 test.describe('I. edge cases', () => {
-  test('service worker stopped between clicks: counter survives (chrome.storage.session), numbers continue 1,2,3,4; in-page message path also wakes the worker', async ({ ext }) => {
+  test('service worker stopped between clicks: numbering does not depend on worker memory (locks + drafts + pending), numbers continue 1,2,3,4; in-page message path also wakes the worker', async ({ ext }) => {
     const T = hook(ext);
     const [a, b] = await clickIcon(ext, T, 2);
     expect(await nums([a, b])).toEqual([1, 2]);
@@ -1003,7 +1010,7 @@ test.describe('I. edge cases', () => {
     await sw(ext).evaluate(() => { chrome.action.onClicked.dispatch({ id: 0, index: 0 }); });
     const [d] = await waitNew(ext, before, 1);
     expect(nOf((await info(d)).name)).toBe(4);
-    expect(await session(ext)).toEqual({ 'mdwe.untitledNext': 5 });
+    await expect.poll(() => pending(ext)).toEqual({}); await noCounter(ext);
   });
 
   test('burst of 5 messages while the worker is stopped (cold start): distinct numbers, 5 tabs', async ({ ext }) => {
@@ -1028,7 +1035,7 @@ test.describe('I. edge cases', () => {
     expect(new Set(infos.map((i) => i.slot)).size).toBe(50);
     expect(new Set(tabs.map(docId)).size).toBe(50);
     for (const i of infos) expect(i.search).toMatch(/^\?doc=[0-9a-f-]{36}&n=\d+$/);
-    expect(await session(ext)).toEqual({ 'mdwe.untitledNext': 51 });
+    await expect.poll(() => pending(ext), { timeout: 15000 }).toEqual({}); await noCounter(ext);
     for (const k of [0, 17, 49]) { await typeIn(tabs[k], 'spot' + k); }
     for (const k of [0, 17, 49]) await waitDraft(tabs[k], infos[k].slot, 'spot' + k + '\n');
     const slots = Object.keys(await local(tabs[0])).filter((k) => k.startsWith(SLOT));
@@ -1081,7 +1088,7 @@ test.describe('I. edge cases', () => {
   test('locks: every note tab holds exactly its own mdwe-slot:<key> (exclusive) + mdwe-num-N (shared); a reloaded tab does not duplicate them; released on close', async ({ ext }) => {
     const T = hook(ext);
     const [a, b] = await clickIcon(ext, T, 2);
-    const held = async () => (await a.evaluate(async () => (await navigator.locks.query()).held.filter((l) => l.name.startsWith('mdwe')).map((l) => l.mode + ' ' + l.name))).sort();
+    const held = async () => (await a.evaluate(async () => (await navigator.locks.query()).held.filter((l) => l.name.startsWith('mdwe') && !l.name.startsWith('mdwe-claim-')).map((l) => l.mode + ' ' + l.name))).sort();
     const want = (...ts) => ts.flatMap((t) => ['exclusive mdwe-slot:' + slotOf(t), 'shared mdwe-num-' + nOf(t.__n)]).sort();
     a.__n = 'Untitled-1.md'; b.__n = 'Untitled-2.md';
     expect(await held()).toEqual(want(a, b));
@@ -1096,7 +1103,7 @@ test.describe('I. edge cases', () => {
 // J. ROUND 2: the Web Lock design (mdwe-slot:<key> exclusive+ifAvailable for doc tabs, SHARED on mdwe.draft / mdwe.draft.file for plain + ?src= tabs, mdwe-num-N shared)
 // =====================================================================================================================
 const lockInfo = (p) => p.evaluate(async () => { const q = await navigator.locks.query(); const f = (l) => l.mode + ' ' + l.name; return { held: q.held.filter((l) => l.name.startsWith('mdwe')).map(f).sort(), pending: q.pending.filter((l) => l.name.startsWith('mdwe')).map(f).sort() }; });
-const heldNames = async (p) => (await lockInfo(p)).held;
+const heldNames = async (p) => (await lockInfo(p)).held.filter((x) => !/mdwe-claim-/.test(x)); // round 5: every Untitled-N tab also holds a shared 'mdwe-claim-<n>-<time>-<rand>' lock (see spec 15 section 19)
 const draftKeys = async (p) => { await openDrafts(p); const k = await rowKeys(p); await p.keyboard.press('Escape'); await expect(p.locator('.drafts-overlay')).toHaveCount(0); return k; };
 // records every distinct #status text (the message can be overwritten within ms by 'Draft autosaved')
 const statusRec = () => { window.__st = []; const go = () => { const e = document.getElementById('status'); if (!e) return setTimeout(go, 5); new MutationObserver(() => { const t = e.textContent; if (t) window.__st.push(t); }).observe(e, { childList: true, characterData: true, subtree: true }); }; go(); };
@@ -1157,17 +1164,17 @@ test.describe('J1. lock names and modes', () => {
 });
 
 test.describe('J2. duplicate tab (#43): fresh uuid + own copy', () => {
-  test('second tab on the same ?doc=: different uuid, same n and name, copy of the text with status message, original untouched; type in both, reload both -> independent', async ({ ext }) => {
+  test('second tab on the same ?doc=: different uuid, FRESH n and name (#52), copy of the text with status message, original untouched; type in both, reload both -> independent', async ({ ext }) => {
     const T = hook(ext);
     const [a] = await clickIcon(ext, T); await typeIn(a, 'orig text'); await waitDraft(a, slotOf(a), 'orig text\n');
     const aUrl = a.url();
     const b = await openEditor(ext, { query: dupQuery(a), init: statusRec });
     await expect.poll(() => docId(b.page)).not.toBe(docId(a));
-    await b.page.waitForFunction(() => window.__mdwe.state.slot && /Untitled-1/.test(window.__mdwe.state.name));
+    await b.page.waitForFunction(() => window.__mdwe.state.slot && /Untitled-2/.test(window.__mdwe.state.name));
     const ib = await info(b.page);
     expect(docId(b.page)).toMatch(uuidRe); expect(ib.slot).toBe(slotOf(b.page)); expect(ib.slot).not.toBe(slotOf(a));
-    expect(b.page.url()).toMatch(/\?doc=[0-9a-f-]{36}&n=1$/); expect(a.url()).toBe(aUrl);
-    expect(ib.md).toBe('orig text\n'); expect(ib.name).toBe('Untitled-1.md'); expect(ib.title).toBe('• Untitled-1.md — Markdown Editor');
+    expect(b.page.url()).toMatch(/\?doc=[0-9a-f-]{36}&n=2$/); expect(a.url()).toBe(aUrl);
+    expect(ib.md).toBe('orig text\n'); expect(ib.name).toBe('Untitled-2.md'); expect(ib.title).toBe('• Untitled-2.md — Markdown Editor');
     await expect.poll(() => b.page.evaluate(() => window.__st), { message: 'status message shown at least once' }).toContain('This note is open in another tab: working on a copy');
     const st = await b.page.evaluate(() => window.__st);
     test.info().annotations.push({ type: 'info', description: 'status texts seen in the copy tab: ' + JSON.stringify(st) });
@@ -1360,7 +1367,7 @@ test.describe('J3. Drafts dialog behaviour after the fixes', () => {
     await b.reload(); await b.waitForFunction(() => window.__mdwe && window.__mdwe.state.slot);
     const [e] = await clickIcon(ext, T);
     expect(nOf((await info(e)).name), '1,2,3 held again').toBe(4);
-    expect(await session(ext)).toEqual({ 'mdwe.untitledNext': 5 });
+    await expect.poll(() => pending(ext)).toEqual({}); await noCounter(ext);
   });
 
   test('#37 duplicate-tab copies keep n: the number lock is shared, so two tabs on Untitled-1 do not break the counter; both released only when BOTH closed', async ({ ext }) => {
@@ -1572,7 +1579,7 @@ test.describe('K. lock-design regressions', () => {
     const keys = await draftKeys(keep); expect(keys.sort()).toEqual(typed.sort());
   });
 
-  test('Save As in a doc tab: slot lock + number lock unchanged by the rename; draft removed on save; re-editing after save writes the SAME slot (still hidden from other tabs\' Drafts), Ctrl+S saves in place', async ({ ext }) => {
+  test('Save As in a doc tab: slot lock unchanged by the rename, the NUMBER lock is released (fixed #48); draft removed on save; re-editing after save writes the SAME slot (still hidden from other tabs\' Drafts), Ctrl+S saves in place', async ({ ext }) => {
     const T = hook(ext);
     await ext.ctx.addInitScript(fsaRecorder, { saveName: 'renamed.md' });
     const [a, b] = await clickIcon(ext, T, 2); const ka = slotOf(a);
@@ -1580,7 +1587,8 @@ test.describe('K. lock-design regressions', () => {
     await typeIn(a, 'v1'); await waitDraft(a, ka, 'v1\n');
     await a.keyboard.press('Control+s'); await expect(a.locator('#filename')).toHaveText('renamed.md');
     await expect.poll(() => lget(a, ka)).toBeUndefined();
-    expect(await heldNames(b), 'locks identical after rename').toEqual(before);
+    expect(before).toContain('shared mdwe-num-1');
+    expect(await heldNames(b), 'slot locks identical, the Untitled-1 number lock is gone (#48)').toEqual(before.filter((x) => x !== 'shared mdwe-num-1'));
     expect(await draftKeys(b)).toEqual([]);
     await typeIn(a, ' v2'); await waitDraft(a, ka, 'v1 v2\n');
     expect((await lget(a, ka)).name).toBe('renamed.md');

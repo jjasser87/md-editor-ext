@@ -74,3 +74,8 @@ export function fsaRecorder({ saveName, openContent = '# Opened\n\nhello\n', ope
 export const seed = (ext, o) => sw(ext).evaluate((o) => chrome.storage.local.set(o), o);
 export const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export const nOf = (name) => Number((/^Untitled-(\d+)\.md$/.exec(name) || [])[1]);
+
+// Round 3 (index-Cvo1EJ2m.js): numbering = lowest free N (no session counter). Session storage only holds 'mdwe.untitledPending' = { "<n>": handedOutAt } for tabs that have not yet taken their mdwe-num-N lock.
+export const PENDING_KEY = 'mdwe.untitledPending';
+export const pending = async (ext) => (await session(ext))[PENDING_KEY] || {};
+export const noCounter = async (ext) => expect(Object.keys(await session(ext)).filter((k) => k !== PENDING_KEY), 'obsolete counter key must never be written').toEqual([]);

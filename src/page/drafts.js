@@ -19,7 +19,32 @@ export function holdSlot(key, { shared = false } = {}) {
   });
 }
 // Tells the background which Untitled-N numbers are in use by open tabs.
-export function holdNumber(n) { if (navigator.locks) navigator.locks.request('mdwe-num-' + n, { mode: 'shared' }, () => new Promise(() => {})); }
+// Resolves {release, claim} once this tab holds the number lock; release() gives the number up (name no longer Untitled-N.md, or the tab picked another number).
+// Each tab also holds a shared 'mdwe-claim-<n>-<time>-<rand>' lock: when two tabs end up with the same number the one with the later claim gives way, so exactly one moves.
+export function holdNumber(n) {
+  const told = () => { try { chrome.runtime.sendMessage({ type: 'note-number-held', n }); } catch { /* background will expire the reservation */ } };
+  const claim = 'mdwe-claim-' + n + '-' + String(Date.now()).padStart(15, '0') + '-' + Math.random().toString(36).slice(2, 10);
+  return new Promise((resolve) => {
+    let release; const done = new Promise((r) => { release = r; });
+    if (!navigator.locks) { told(); resolve({ release, claim }); return; }
+    navigator.locks.request(claim, { mode: 'shared' }, () => done);
+    navigator.locks.request('mdwe-num-' + n, { mode: 'shared' }, () => { told(); resolve({ release, claim }); return done; });
+  });
+}
+// True when another tab holds the same number with an earlier claim (so this tab should pick a new number).
+export async function claimedEarlierElsewhere(n, handle) {
+  try {
+    const prefix = 'mdwe-claim-' + n + '-';
+    return ((await navigator.locks.query()).held || []).some((l) => l.name.indexOf(prefix) === 0 && l.name !== handle.claim && l.name < handle.claim);
+  } catch { return false; }
+}
+export function allocNumber() {
+  return new Promise((resolve) => {
+    const fallback = () => resolve(1 + (Date.now() % 900000));
+    const timer = setTimeout(fallback, 2500); // never let init hang on the background
+    try { chrome.runtime.sendMessage({ type: 'alloc-number' }, (r) => { clearTimeout(timer); void chrome.runtime.lastError; resolve(r && r.n >= 1 ? r.n : 1 + (Date.now() % 900000)); }); } catch { clearTimeout(timer); fallback(); }
+  });
+}
 async function heldLocks() {
   try { return new Set(((await navigator.locks.query()).held || []).map((l) => l.name)); } catch { return new Set(); }
 }
